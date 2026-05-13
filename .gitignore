@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Build / runtime
+dist/
+build/
+*.log
+storage/
+uploads/
+tmp/
+
+# Models (lourds, à stocker ailleurs)
+*.pt
+*.pth
+*.onnx
+*.h5
+*.tflite
