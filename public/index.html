@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Coach Sportif IA</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@13.0.0/marked.min.js"></script>
+</head>
+<body>
+  <header class="hero">
+    <h1>🏋️ Coach Sportif IA</h1>
+    <p class="subtitle">Entraînements, nutrition et suivi de progression, propulsés par Claude</p>
+    <div id="health-banner" class="banner hidden"></div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="profil">Profil</button>
+    <button class="tab" data-tab="mesures">Mesures</button>
+    <button class="tab" data-tab="entrainements">Entraînements</button>
+    <button class="tab" data-tab="progression">Progression</button>
+    <button class="tab" data-tab="coach">Coach IA</button>
+    <button class="tab" data-tab="plans">Plans</button>
+  </nav>
+
+  <main>
+    <!-- PROFIL -->
+    <section id="tab-profil" class="tab-content active">
+      <h2>Mon profil</h2>
+      <p class="hint">Ces informations permettent au coach IA de personnaliser tous les conseils.</p>
+      <form id="profile-form" class="card grid-2">
+        <label>Nom / pseudo
+          <input name="nom" type="text" />
+        </label>
+        <label>Âge
+          <input name="age" type="number" min="10" max="100" />
+        </label>
+        <label>Sexe
+          <select name="sexe">
+            <option value="">—</option>
+            <option value="homme">Homme</option>
+            <option value="femme">Femme</option>
+            <option value="autre">Autre</option>
+          </select>
+        </label>
+        <label>Taille (cm)
+          <input name="taille_cm" type="number" step="0.1" min="100" max="250" />
+        </label>
+        <label>Niveau
+          <select name="niveau">
+            <option value="">—</option>
+            <option value="debutant">Débutant</option>
+            <option value="intermediaire">Intermédiaire</option>
+            <option value="avance">Avancé</option>
+          </select>
+        </label>
+        <label>Fréquence hebdo (séances/sem.)
+          <input name="frequence_hebdo" type="number" min="0" max="14" />
+        </label>
+        <label class="span-2">Objectif principal
+          <textarea name="objectif" rows="2" placeholder="Ex: perdre 5 kg de gras en 3 mois tout en gardant ma masse musculaire"></textarea>
+        </label>
+        <label class="span-2">Équipement / lieu d'entraînement
+          <textarea name="equipement" rows="2" placeholder="Ex: salle de sport complète, ou : haltères 2×10kg + élastiques à la maison"></textarea>
+        </label>
+        <label class="span-2">Contraintes / blessures
+          <textarea name="contraintes" rows="2" placeholder="Ex: ancienne entorse genou droit, éviter sauts"></textarea>
+        </label>
+        <label class="span-2">Préférences / restrictions alimentaires
+          <textarea name="preferences_alim" rows="2" placeholder="Ex: végétarien, pas de lactose"></textarea>
+        </label>
+        <div class="span-2 actions">
+          <button type="submit" class="primary">Enregistrer le profil</button>
+          <span id="profile-status" class="status"></span>
+        </div>
+      </form>
+    </section>
+
+    <!-- MESURES -->
+    <section id="tab-mesures" class="tab-content">
+      <h2>Mesures corporelles</h2>
+      <p class="hint">Suivez régulièrement vos mesures pour visualiser votre progression.</p>
+      <form id="measure-form" class="card grid-3">
+        <label>Date
+          <input name="date" type="date" required />
+        </label>
+        <label>Poids (kg)
+          <input name="poids_kg" type="number" step="0.1" />
+        </label>
+        <label>% muscle
+          <input name="pct_muscle" type="number" step="0.1" />
+        </label>
+        <label>% graisse
+          <input name="pct_graisse" type="number" step="0.1" />
+        </label>
+        <label>Tour de taille (cm)
+          <input name="tour_taille_cm" type="number" step="0.1" />
+        </label>
+        <label>Tour de hanches (cm)
+          <input name="tour_hanches_cm" type="number" step="0.1" />
+        </label>
+        <label>Tour de bras (cm)
+          <input name="tour_bras_cm" type="number" step="0.1" />
+        </label>
+        <label>Tour de cuisse (cm)
+          <input name="tour_cuisse_cm" type="number" step="0.1" />
+        </label>
+        <label class="span-3">Notes
+          <input name="notes" type="text" placeholder="Ex: à jeun, après cardio…" />
+        </label>
+        <div class="span-3 actions">
+          <button type="submit" class="primary">Ajouter la mesure</button>
+        </div>
+      </form>
+
+      <h3>Historique</h3>
+      <div class="table-wrap">
+        <table id="measure-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Poids</th><th>%Muscle</th><th>%Graisse</th>
+              <th>Taille</th><th>Hanches</th><th>Bras</th><th>Cuisse</th>
+              <th>Notes</th><th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ENTRAÎNEMENTS -->
+    <section id="tab-entrainements" class="tab-content">
+      <h2>Journal d'entraînement</h2>
+      <p class="hint">Notez chaque séance pour permettre au coach d'adapter les prochaines.</p>
+
+      <form id="workout-form" class="card">
+        <div class="grid-3">
+          <label>Date
+            <input name="date" type="date" required />
+          </label>
+          <label>Nom de la séance
+            <input name="nom" type="text" placeholder="Ex: Push haut du corps" />
+          </label>
+          <label>Durée (min)
+            <input name="duree_min" type="number" min="0" />
+          </label>
+          <label>Ressenti (1-10)
+            <input name="ressenti" type="number" min="1" max="10" />
+          </label>
+          <label class="span-2">Notes générales
+            <input name="notes" type="text" placeholder="Ex: bonne énergie, douleur épaule gauche en fin" />
+          </label>
+        </div>
+
+        <h4>Exercices</h4>
+        <div id="exercises-list"></div>
+        <button type="button" id="add-exercise" class="secondary">+ Ajouter un exercice</button>
+
+        <div class="actions">
+          <button type="submit" class="primary">Enregistrer la séance</button>
+        </div>
+      </form>
+
+      <h3>Séances récentes</h3>
+      <div id="workouts-list"></div>
+    </section>
+
+    <!-- PROGRESSION -->
+    <section id="tab-progression" class="tab-content">
+      <h2>Progression</h2>
+      <div class="card">
+        <h3>Poids, % muscle, % graisse</h3>
+        <canvas id="chart-body" height="120"></canvas>
+      </div>
+      <div class="card">
+        <h3>Mensurations (tours en cm)</h3>
+        <canvas id="chart-tours" height="120"></canvas>
+      </div>
+      <div class="card">
+        <h3>Volume d'entraînement</h3>
+        <canvas id="chart-workouts" height="120"></canvas>
+      </div>
+      <div class="actions">
+        <button id="analyze-btn" class="primary">🧠 Analyser ma progression avec l'IA</button>
+      </div>
+      <div id="analysis-output" class="markdown card hidden"></div>
+    </section>
+
+    <!-- COACH -->
+    <section id="tab-coach" class="tab-content">
+      <h2>Coach IA</h2>
+      <p class="hint">Demandez une séance, un plan nutrition, ou posez n'importe quelle question. Le coach utilise votre profil, vos mesures et votre historique.</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>🏋️ Générer une séance</h3>
+          <label>Focus
+            <input id="workout-focus" type="text" placeholder="Ex: full body force, ou cardio HIIT, ou bas du corps" />
+          </label>
+          <label>Durée (minutes)
+            <input id="workout-duree" type="number" value="45" min="10" max="180" />
+          </label>
+          <button id="gen-workout-btn" class="primary">Générer la séance</button>
+        </div>
+
+        <div class="card">
+          <h3>🥗 Générer un plan nutrition</h3>
+          <label>Durée (jours)
+            <input id="nutri-duree" type="number" value="7" min="1" max="30" />
+          </label>
+          <label>Calories cible (kcal/jour, laisser vide pour calcul auto)
+            <input id="nutri-cal" type="number" />
+          </label>
+          <button id="gen-nutri-btn" class="primary">Générer le plan</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>💬 Question libre au coach</h3>
+        <textarea id="chat-question" rows="3" placeholder="Ex: comment intégrer du gainage à mes séances ? Combien de protéines viser ?"></textarea>
+        <button id="chat-btn" class="primary">Demander au coach</button>
+      </div>
+
+      <div id="coach-output" class="markdown card hidden"></div>
+    </section>
+
+    <!-- PLANS -->
+    <section id="tab-plans" class="tab-content">
+      <h2>Mes plans sauvegardés</h2>
+      <div class="filters">
+        <button data-filter="all" class="filter active">Tout</button>
+        <button data-filter="workout" class="filter">Séances</button>
+        <button data-filter="nutrition" class="filter">Nutrition</button>
+      </div>
+      <div id="plans-list"></div>
+    </section>
+  </main>
+
+  <div id="loader" class="loader hidden">
+    <div class="spinner"></div>
+    <p id="loader-text">Le coach réfléchit…</p>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,406 @@
+import 'dotenv/config';
+import express from 'express';
+import Database from 'better-sqlite3';
+import Anthropic from '@anthropic-ai/sdk';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json({ limit: '1mb' }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+const db = new Database(path.join(__dirname, 'data', 'coach.db'));
+db.pragma('journal_mode = WAL');
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS profile (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    nom TEXT,
+    age INTEGER,
+    sexe TEXT,
+    taille_cm REAL,
+    niveau TEXT,
+    objectif TEXT,
+    frequence_hebdo INTEGER,
+    equipement TEXT,
+    contraintes TEXT,
+    preferences_alim TEXT,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS measurements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    poids_kg REAL,
+    pct_muscle REAL,
+    pct_graisse REAL,
+    tour_taille_cm REAL,
+    tour_hanches_cm REAL,
+    tour_bras_cm REAL,
+    tour_cuisse_cm REAL,
+    notes TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS workouts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    nom TEXT,
+    duree_min INTEGER,
+    ressenti INTEGER,
+    notes TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS exercises (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workout_id INTEGER NOT NULL,
+    nom TEXT NOT NULL,
+    series INTEGER,
+    repetitions TEXT,
+    charge_kg REAL,
+    repos_sec INTEGER,
+    notes TEXT,
+    FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    titre TEXT,
+    contenu TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+
+const anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
+
+const MODEL = 'claude-opus-4-7';
+
+function getProfile() {
+  return db.prepare('SELECT * FROM profile WHERE id = 1').get();
+}
+
+function getRecentMeasurements(limit = 10) {
+  return db.prepare('SELECT * FROM measurements ORDER BY date DESC, id DESC LIMIT ?').all(limit);
+}
+
+function getRecentWorkouts(limit = 10) {
+  const workouts = db.prepare('SELECT * FROM workouts ORDER BY date DESC, id DESC LIMIT ?').all(limit);
+  const exStmt = db.prepare('SELECT * FROM exercises WHERE workout_id = ?');
+  return workouts.map(w => ({ ...w, exercises: exStmt.all(w.id) }));
+}
+
+function buildContextSummary() {
+  const profile = getProfile();
+  const measurements = getRecentMeasurements(8);
+  const workouts = getRecentWorkouts(8);
+  return { profile, measurements, workouts };
+}
+
+app.get('/api/profile', (req, res) => {
+  res.json(getProfile() || null);
+});
+
+app.post('/api/profile', (req, res) => {
+  const p = req.body || {};
+  db.prepare(`
+    INSERT INTO profile (id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, equipement, contraintes, preferences_alim, updated_at)
+    VALUES (1, @nom, @age, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @equipement, @contraintes, @preferences_alim, CURRENT_TIMESTAMP)
+    ON CONFLICT(id) DO UPDATE SET
+      nom=@nom, age=@age, sexe=@sexe, taille_cm=@taille_cm, niveau=@niveau,
+      objectif=@objectif, frequence_hebdo=@frequence_hebdo, equipement=@equipement,
+      contraintes=@contraintes, preferences_alim=@preferences_alim,
+      updated_at=CURRENT_TIMESTAMP
+  `).run({
+    nom: p.nom ?? null,
+    age: p.age ?? null,
+    sexe: p.sexe ?? null,
+    taille_cm: p.taille_cm ?? null,
+    niveau: p.niveau ?? null,
+    objectif: p.objectif ?? null,
+    frequence_hebdo: p.frequence_hebdo ?? null,
+    equipement: p.equipement ?? null,
+    contraintes: p.contraintes ?? null,
+    preferences_alim: p.preferences_alim ?? null,
+  });
+  res.json(getProfile());
+});
+
+app.get('/api/measurements', (req, res) => {
+  res.json(db.prepare('SELECT * FROM measurements ORDER BY date ASC, id ASC').all());
+});
+
+app.post('/api/measurements', (req, res) => {
+  const m = req.body || {};
+  const info = db.prepare(`
+    INSERT INTO measurements (date, poids_kg, pct_muscle, pct_graisse, tour_taille_cm, tour_hanches_cm, tour_bras_cm, tour_cuisse_cm, notes)
+    VALUES (@date, @poids_kg, @pct_muscle, @pct_graisse, @tour_taille_cm, @tour_hanches_cm, @tour_bras_cm, @tour_cuisse_cm, @notes)
+  `).run({
+    date: m.date || new Date().toISOString().slice(0, 10),
+    poids_kg: m.poids_kg ?? null,
+    pct_muscle: m.pct_muscle ?? null,
+    pct_graisse: m.pct_graisse ?? null,
+    tour_taille_cm: m.tour_taille_cm ?? null,
+    tour_hanches_cm: m.tour_hanches_cm ?? null,
+    tour_bras_cm: m.tour_bras_cm ?? null,
+    tour_cuisse_cm: m.tour_cuisse_cm ?? null,
+    notes: m.notes ?? null,
+  });
+  res.json(db.prepare('SELECT * FROM measurements WHERE id = ?').get(info.lastInsertRowid));
+});
+
+app.delete('/api/measurements/:id', (req, res) => {
+  db.prepare('DELETE FROM measurements WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+app.get('/api/workouts', (req, res) => {
+  res.json(getRecentWorkouts(50));
+});
+
+app.post('/api/workouts', (req, res) => {
+  const w = req.body || {};
+  const exercises = Array.isArray(w.exercises) ? w.exercises : [];
+
+  const tx = db.transaction(() => {
+    const info = db.prepare(`
+      INSERT INTO workouts (date, nom, duree_min, ressenti, notes)
+      VALUES (@date, @nom, @duree_min, @ressenti, @notes)
+    `).run({
+      date: w.date || new Date().toISOString().slice(0, 10),
+      nom: w.nom ?? null,
+      duree_min: w.duree_min ?? null,
+      ressenti: w.ressenti ?? null,
+      notes: w.notes ?? null,
+    });
+    const workoutId = info.lastInsertRowid;
+    const exStmt = db.prepare(`
+      INSERT INTO exercises (workout_id, nom, series, repetitions, charge_kg, repos_sec, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    for (const e of exercises) {
+      exStmt.run(
+        workoutId,
+        e.nom ?? '',
+        e.series ?? null,
+        e.repetitions ?? null,
+        e.charge_kg ?? null,
+        e.repos_sec ?? null,
+        e.notes ?? null,
+      );
+    }
+    return workoutId;
+  });
+
+  const id = tx();
+  const workout = db.prepare('SELECT * FROM workouts WHERE id = ?').get(id);
+  workout.exercises = db.prepare('SELECT * FROM exercises WHERE workout_id = ?').all(id);
+  res.json(workout);
+});
+
+app.delete('/api/workouts/:id', (req, res) => {
+  db.prepare('DELETE FROM workouts WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+app.get('/api/plans', (req, res) => {
+  const type = req.query.type;
+  if (type) {
+    res.json(db.prepare('SELECT * FROM plans WHERE type = ? ORDER BY created_at DESC').all(type));
+  } else {
+    res.json(db.prepare('SELECT * FROM plans ORDER BY created_at DESC').all());
+  }
+});
+
+app.delete('/api/plans/:id', (req, res) => {
+  db.prepare('DELETE FROM plans WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+function requireAnthropic(res) {
+  if (!anthropic) {
+    res.status(503).json({
+      error: 'Clé API Anthropic manquante. Définissez ANTHROPIC_API_KEY dans .env',
+    });
+    return false;
+  }
+  return true;
+}
+
+async function callClaude(systemPrompt, userPrompt) {
+  const stream = anthropic.messages.stream({
+    model: MODEL,
+    max_tokens: 16000,
+    thinking: { type: 'adaptive' },
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }],
+  });
+  const message = await stream.finalMessage();
+  const textBlock = message.content.find(b => b.type === 'text');
+  return textBlock?.text ?? '';
+}
+
+const COACH_SYSTEM = `Tu es un coach sportif et nutritionniste expert, bienveillant et pédagogue.
+Tu personnalises chaque conseil en t'appuyant strictement sur les données fournies (profil, mesures, historique d'entraînement).
+Tu adaptes la difficulté à la progression et aux contraintes de l'utilisateur.
+Tu donnes des conseils sûrs : tu mentionnes les précautions, les échauffements, et tu rappelles qu'un avis médical est recommandé en cas de pathologie.
+Tu réponds en français, de manière structurée avec des titres en markdown.`;
+
+app.post('/api/generate-workout', async (req, res) => {
+  if (!requireAnthropic(res)) return;
+  try {
+    const ctx = buildContextSummary();
+    const focus = req.body?.focus || 'séance équilibrée adaptée à mes objectifs';
+    const duree = req.body?.duree_min || 45;
+
+    const userPrompt = `Génère une séance d'entraînement personnalisée.
+
+# Contexte
+## Profil
+${JSON.stringify(ctx.profile, null, 2)}
+
+## Mesures récentes (chronologique inverse)
+${JSON.stringify(ctx.measurements, null, 2)}
+
+## Entraînements récents
+${JSON.stringify(ctx.workouts, null, 2)}
+
+# Demande
+- Focus : ${focus}
+- Durée cible : ${duree} minutes
+- Analyse ma progression et adapte la difficulté en conséquence
+- Si possible, varie les exercices par rapport aux séances récentes
+- Structure : Échauffement → Bloc principal (exercices avec séries × reps × charge ou tempo, repos) → Retour au calme
+- Conclus par 2-3 indicateurs de progression à suivre pour la prochaine séance`;
+
+    const text = await callClaude(COACH_SYSTEM, userPrompt);
+    const titre = `Séance — ${new Date().toLocaleDateString('fr-FR')} (${focus})`;
+    const info = db.prepare(
+      'INSERT INTO plans (type, titre, contenu) VALUES (?, ?, ?)'
+    ).run('workout', titre, text);
+    res.json({ id: info.lastInsertRowid, titre, contenu: text });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/generate-nutrition', async (req, res) => {
+  if (!requireAnthropic(res)) return;
+  try {
+    const ctx = buildContextSummary();
+    const duree = req.body?.duree_jours || 7;
+    const calories_cible = req.body?.calories_cible || null;
+
+    const userPrompt = `Génère un plan nutrition personnalisé.
+
+# Contexte
+## Profil
+${JSON.stringify(ctx.profile, null, 2)}
+
+## Mesures récentes
+${JSON.stringify(ctx.measurements, null, 2)}
+
+## Entraînements récents (pour ajuster les apports les jours d'entraînement)
+${JSON.stringify(ctx.workouts, null, 2)}
+
+# Demande
+- Durée du plan : ${duree} jours
+- Calories cible : ${calories_cible ? `${calories_cible} kcal/jour` : 'à calculer selon le profil et l\'objectif'}
+- Calcule besoins (BMR + dépense + objectif) et propose une cible journalière macros (protéines/glucides/lipides en g)
+- Donne un exemple type de répartition repas (petit-déjeuner, déjeuner, collation, dîner)
+- Prévois 2-3 variantes par repas pour éviter la monotonie
+- Adapte les apports aux jours d'entraînement vs jours de repos
+- Inclus une liste de courses synthétique en fin de plan`;
+
+    const text = await callClaude(COACH_SYSTEM, userPrompt);
+    const titre = `Plan nutrition — ${new Date().toLocaleDateString('fr-FR')} (${duree}j)`;
+    const info = db.prepare(
+      'INSERT INTO plans (type, titre, contenu) VALUES (?, ?, ?)'
+    ).run('nutrition', titre, text);
+    res.json({ id: info.lastInsertRowid, titre, contenu: text });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/coach-chat', async (req, res) => {
+  if (!requireAnthropic(res)) return;
+  try {
+    const question = req.body?.question;
+    if (!question) return res.status(400).json({ error: 'Question manquante' });
+
+    const ctx = buildContextSummary();
+    const userPrompt = `# Contexte de l'utilisateur
+## Profil
+${JSON.stringify(ctx.profile, null, 2)}
+
+## Mesures récentes
+${JSON.stringify(ctx.measurements, null, 2)}
+
+## Entraînements récents
+${JSON.stringify(ctx.workouts, null, 2)}
+
+# Question
+${question}`;
+
+    const text = await callClaude(COACH_SYSTEM, userPrompt);
+    res.json({ reponse: text });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/progress-analysis', async (req, res) => {
+  if (!requireAnthropic(res)) return;
+  try {
+    const ctx = buildContextSummary();
+    const userPrompt = `Analyse en profondeur ma progression à partir de mes données.
+
+# Données
+## Profil
+${JSON.stringify(ctx.profile, null, 2)}
+
+## Mesures (chronologique)
+${JSON.stringify(ctx.measurements, null, 2)}
+
+## Entraînements récents
+${JSON.stringify(ctx.workouts, null, 2)}
+
+# Demande
+- Identifie les tendances (poids, % muscle, % graisse, tours)
+- Évalue la cohérence avec mon objectif déclaré
+- Pointe les points forts et les points à corriger
+- Propose 3 ajustements concrets (entraînement et nutrition) pour les 2 prochaines semaines
+- Sois honnête : si les données sont insuffisantes, dis-le et explique ce qu'il faut suivre`;
+
+    const text = await callClaude(COACH_SYSTEM, userPrompt);
+    res.json({ analyse: text });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    anthropic_configured: !!anthropic,
+    model: MODEL,
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Coach sportif IA en écoute sur http://localhost:${PORT}`);
+  if (!anthropic) {
+    console.warn('ANTHROPIC_API_KEY non défini — les endpoints IA renverront 503.');
+  }
+});

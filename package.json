@@ -1,0 +1,17 @@
+{
+  "name": "coach-sportif-ia",
+  "version": "1.0.0",
+  "description": "Application de coach sportif personnalisé avec IA Claude",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0"
+  }
+}
