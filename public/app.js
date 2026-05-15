@@ -149,23 +149,326 @@ $('#measure-form').addEventListener('submit', async (e) => {
 });
 
 // --- WORKOUTS ---
-function addExerciseRow(data = {}) {
-  const list = $('#exercises-list');
-  const row = document.createElement('div');
-  row.className = 'exercise-row';
-  row.innerHTML = `
-    <label>Nom <input name="ex_nom" type="text" placeholder="Ex: Squat" value="${data.nom ?? ''}" /></label>
-    <label>Séries <input name="ex_series" type="number" min="1" value="${data.series ?? ''}" /></label>
-    <label>Répétitions <input name="ex_reps" type="text" placeholder="10 ou 8-12" value="${data.repetitions ?? ''}" /></label>
-    <label>Charge (kg) <input name="ex_charge" type="number" step="0.5" value="${data.charge_kg ?? ''}" /></label>
-    <label>Repos (s) <input name="ex_repos" type="number" min="0" value="${data.repos_sec ?? ''}" /></label>
-    <button type="button" class="danger" data-remove>×</button>
-  `;
-  row.querySelector('[data-remove]').addEventListener('click', () => row.remove());
-  list.appendChild(row);
+let exerciseCounter = 0;
+
+function buildSelectOptions(items, valueKey, labelKey, current) {
+  return ['<option value="">— Sélectionner —</option>']
+    .concat(items.map(i => `<option value="${i[valueKey]}" ${current === i[valueKey] ? 'selected' : ''}>${i[labelKey]}</option>`))
+    .join('');
 }
 
-$('#add-exercise').addEventListener('click', () => addExerciseRow());
+function addExerciseCard(data = {}) {
+  const list = $('#exercises-list');
+  const idx = ++exerciseCounter;
+  const card = document.createElement('div');
+  card.className = 'exercise-card';
+  card.dataset.idx = idx;
+
+  const muscleOptions = buildSelectOptions(window.GROUPES_MUSCULAIRES, 'id', 'label', data.groupe_musculaire);
+  const equipOptions = buildSelectOptions(window.TYPES_EQUIPEMENT, 'id', 'label', data.type_equipement);
+
+  card.innerHTML = `
+    <div class="exercise-card-header">
+      <span class="exercise-number">${idx}.</span>
+      <span class="exercise-name">${data.nom || 'Nouvel exercice'}</span>
+      <button type="button" class="danger" data-remove>×</button>
+    </div>
+    <div class="exercise-card-body">
+      <div class="exercise-filters">
+        <label>Groupe musculaire
+          <select class="muscle-select">${muscleOptions}</select>
+        </label>
+        <label>Équipement
+          <select class="equipment-select">${equipOptions}</select>
+        </label>
+        <label>Exercice
+          <select class="exercise-select"><option value="">— D'abord choisir groupe + équipement —</option></select>
+        </label>
+        <label>Ou nom personnalisé
+          <input type="text" class="custom-name" placeholder="Saisir un autre nom" value="${data.nom && !data.from_catalog ? data.nom : ''}" />
+        </label>
+      </div>
+
+      <div class="variable-toggle-wrap">
+        <label class="checkbox-row">
+          <input type="checkbox" class="variable-toggle" /> Charges variables par série (drop-set, pyramide…)
+        </label>
+      </div>
+
+      <div class="exercise-uniform">
+        <label>Séries <input class="series" type="number" min="1" value="${data.series ?? ''}" /></label>
+        <label>Reps <input class="reps" type="text" placeholder="10 ou 8-12" value="${data.repetitions ?? ''}" /></label>
+        <label>Charge (kg) <input class="charge" type="number" step="0.5" value="${data.charge_kg ?? ''}" /></label>
+        <label>Repos (s) <input class="repos" type="number" min="0" value="${data.repos_sec ?? ''}" /></label>
+      </div>
+
+      <div class="exercise-variable hidden">
+        <div class="series-detail-list"></div>
+        <button type="button" class="secondary add-series-btn">+ Ajouter une série</button>
+      </div>
+
+      <label class="exercise-notes">Notes
+        <input type="text" class="notes" placeholder="Ressenti, technique, etc." value="${data.notes ?? ''}" />
+      </label>
+    </div>
+  `;
+
+  list.appendChild(card);
+
+  const muscleSel = card.querySelector('.muscle-select');
+  const equipSel = card.querySelector('.equipment-select');
+  const exerSel = card.querySelector('.exercise-select');
+  const customInput = card.querySelector('.custom-name');
+  const nameDisplay = card.querySelector('.exercise-name');
+  const variableToggle = card.querySelector('.variable-toggle');
+  const uniformSection = card.querySelector('.exercise-uniform');
+  const variableSection = card.querySelector('.exercise-variable');
+  const seriesDetailList = card.querySelector('.series-detail-list');
+  const addSeriesBtn = card.querySelector('.add-series-btn');
+  const seriesInput = card.querySelector('.series');
+
+  function refreshExerciseList() {
+    const g = muscleSel.value;
+    const eq = equipSel.value;
+    if (!g && !eq) {
+      exerSel.innerHTML = '<option value="">— D\'abord choisir groupe + équipement —</option>';
+      return;
+    }
+    const matches = window.filterExercises(g || null, eq || null);
+    if (!matches.length) {
+      exerSel.innerHTML = '<option value="">Aucun exercice — utilisez le nom personnalisé</option>';
+      return;
+    }
+    exerSel.innerHTML = '<option value="">— Choisir un exercice —</option>'
+      + matches.map(e => `<option value="${e.nom}" ${data.nom === e.nom ? 'selected' : ''}>${e.nom}</option>`).join('');
+  }
+
+  function updateName() {
+    const name = customInput.value.trim() || exerSel.value || 'Nouvel exercice';
+    nameDisplay.textContent = name;
+  }
+
+  muscleSel.addEventListener('change', () => { refreshExerciseList(); updateSessionSummary(); });
+  equipSel.addEventListener('change', () => { refreshExerciseList(); updateSessionSummary(); });
+  exerSel.addEventListener('change', () => {
+    if (exerSel.value) customInput.value = '';
+    updateName();
+  });
+  customInput.addEventListener('input', () => {
+    if (customInput.value) exerSel.value = '';
+    updateName();
+  });
+
+  function addSeriesDetailRow(values = {}) {
+    const rowIdx = seriesDetailList.children.length + 1;
+    const row = document.createElement('div');
+    row.className = 'series-detail-row';
+    row.innerHTML = `
+      <span class="series-num">S${rowIdx}</span>
+      <input class="sd-reps" type="number" min="1" placeholder="Reps" value="${values.reps ?? ''}" />
+      <input class="sd-charge" type="number" step="0.5" placeholder="Charge (kg)" value="${values.charge ?? ''}" />
+      <button type="button" class="danger" data-remove-series>×</button>
+    `;
+    row.querySelector('[data-remove-series]').addEventListener('click', () => {
+      row.remove();
+      renumberSeries();
+      updateSessionSummary();
+    });
+    row.querySelectorAll('input').forEach(i => i.addEventListener('input', updateSessionSummary));
+    seriesDetailList.appendChild(row);
+    updateSessionSummary();
+  }
+
+  function renumberSeries() {
+    Array.from(seriesDetailList.children).forEach((r, i) => {
+      r.querySelector('.series-num').textContent = `S${i + 1}`;
+    });
+  }
+
+  addSeriesBtn.addEventListener('click', () => addSeriesDetailRow());
+
+  variableToggle.addEventListener('change', () => {
+    if (variableToggle.checked) {
+      uniformSection.classList.add('hidden');
+      variableSection.classList.remove('hidden');
+      // Pre-populate series rows from the uniform fields
+      if (seriesDetailList.children.length === 0) {
+        const nSeries = parseInt(seriesInput.value, 10) || 3;
+        const reps = card.querySelector('.reps').value;
+        const charge = card.querySelector('.charge').value;
+        for (let i = 0; i < nSeries; i++) addSeriesDetailRow({ reps, charge });
+      }
+    } else {
+      uniformSection.classList.remove('hidden');
+      variableSection.classList.add('hidden');
+    }
+    updateSessionSummary();
+  });
+
+  // Listen to all inputs that affect the summary
+  card.querySelectorAll('.series, .reps, .charge').forEach(i => i.addEventListener('input', updateSessionSummary));
+
+  card.querySelector('[data-remove]').addEventListener('click', () => {
+    card.remove();
+    updateSessionSummary();
+  });
+
+  // If reloading from data, restore variable details
+  if (Array.isArray(data.series_details) && data.series_details.length > 0) {
+    variableToggle.checked = true;
+    variableToggle.dispatchEvent(new Event('change'));
+    seriesDetailList.innerHTML = '';
+    data.series_details.forEach(sd => addSeriesDetailRow(sd));
+  }
+
+  if (data.groupe_musculaire || data.type_equipement) refreshExerciseList();
+  updateName();
+  updateSessionSummary();
+}
+
+function readExerciseCard(card) {
+  const customName = card.querySelector('.custom-name').value.trim();
+  const selectedName = card.querySelector('.exercise-select').value;
+  const nom = customName || selectedName;
+  if (!nom) return null;
+
+  const groupe_musculaire = card.querySelector('.muscle-select').value || null;
+  const type_equipement = card.querySelector('.equipment-select').value || null;
+  const notes = card.querySelector('.notes').value || null;
+  const variable = card.querySelector('.variable-toggle').checked;
+
+  if (variable) {
+    const rows = Array.from(card.querySelectorAll('.series-detail-row')).map(r => ({
+      reps: num(r.querySelector('.sd-reps').value),
+      charge: num(r.querySelector('.sd-charge').value),
+    })).filter(s => s.reps != null || s.charge != null);
+    const charges = rows.map(r => r.charge).filter(c => c != null);
+    return {
+      nom,
+      groupe_musculaire,
+      type_equipement,
+      series: rows.length || null,
+      repetitions: rows.map(r => r.reps ?? '?').join('/'),
+      charge_kg: charges.length ? Math.max(...charges) : null,
+      repos_sec: num(card.querySelector('.repos').value),
+      series_details: rows,
+      notes,
+    };
+  }
+
+  return {
+    nom,
+    groupe_musculaire,
+    type_equipement,
+    series: num(card.querySelector('.series').value),
+    repetitions: card.querySelector('.reps').value || null,
+    charge_kg: num(card.querySelector('.charge').value),
+    repos_sec: num(card.querySelector('.repos').value),
+    series_details: null,
+    notes,
+  };
+}
+
+function computeSessionStats() {
+  const cards = $$('.exercise-card');
+  let nbExercices = 0;
+  let totalSeries = 0;
+  let totalReps = 0;
+  let tonnage = 0;
+
+  for (const card of cards) {
+    const ex = readExerciseCard(card);
+    if (!ex) continue;
+    nbExercices++;
+
+    if (ex.series_details && ex.series_details.length) {
+      for (const s of ex.series_details) {
+        totalSeries += 1;
+        totalReps += s.reps || 0;
+        tonnage += (s.reps || 0) * (s.charge || 0);
+      }
+    } else {
+      const series = ex.series || 0;
+      // For "10-12" pick midpoint, for "10" pick 10
+      let reps = 0;
+      if (ex.repetitions) {
+        const m = String(ex.repetitions).match(/(\d+)\s*(?:-\s*(\d+))?/);
+        if (m) {
+          reps = m[2] ? (parseInt(m[1], 10) + parseInt(m[2], 10)) / 2 : parseInt(m[1], 10);
+        }
+      }
+      totalSeries += series;
+      totalReps += series * reps;
+      tonnage += series * reps * (ex.charge_kg || 0);
+    }
+  }
+
+  return { nbExercices, totalSeries, totalReps, tonnage };
+}
+
+let cachedBodyweight = null;
+async function getBodyweight() {
+  if (cachedBodyweight !== null) return cachedBodyweight;
+  try {
+    const profile = await api('/api/profile');
+    const measurements = await api('/api/measurements');
+    const lastMeasure = measurements.slice().reverse().find(m => m.poids_kg);
+    cachedBodyweight = lastMeasure?.poids_kg ?? profile?.poids_kg ?? null;
+  } catch { cachedBodyweight = null; }
+  return cachedBodyweight;
+}
+
+function estimateKcal(durationMin, ressenti, bodyweightKg) {
+  if (!durationMin) return null;
+  // MET selon ressenti (1-10)
+  let met = 5; // moderate strength training
+  if (ressenti) {
+    if (ressenti <= 3) met = 3.5;
+    else if (ressenti <= 6) met = 5;
+    else if (ressenti <= 8) met = 6;
+    else met = 7;
+  }
+  const weight = bodyweightKg || 75;
+  // Formule MET : kcal/min = MET × poids × 0.0175
+  return Math.round(met * weight * 0.0175 * durationMin);
+}
+
+async function updateSessionSummary() {
+  const stats = computeSessionStats();
+  $('#sum-exercices').textContent = stats.nbExercices;
+  $('#sum-series').textContent = stats.totalSeries;
+  $('#sum-reps').textContent = Math.round(stats.totalReps);
+  $('#sum-tonnage').textContent = `${Math.round(stats.tonnage)} kg`;
+
+  const dureeInput = $('#workout-form [name=duree_min]');
+  const ressentiInput = $('#workout-form [name=ressenti]');
+  const duree = dureeInput ? num(dureeInput.value) : null;
+  const ressenti = ressentiInput ? num(ressentiInput.value) : null;
+  const bw = await getBodyweight();
+  const kcal = estimateKcal(duree, ressenti, bw);
+
+  const kcalEl = $('#sum-kcal');
+  const hintEl = $('#sum-hint');
+  if (kcal) {
+    const kj = Math.round(kcal * 4.184);
+    kcalEl.textContent = `${kcal} kcal (~${kj} kJ)`;
+    const bits = [];
+    bits.push(`durée ${duree} min`);
+    if (ressenti) bits.push(`ressenti ${ressenti}/10`);
+    bits.push(bw ? `poids ${bw} kg` : `poids supposé 75 kg`);
+    hintEl.textContent = 'Basé sur : ' + bits.join(' · ');
+  } else {
+    kcalEl.textContent = '— kcal';
+    hintEl.textContent = 'Renseignez la durée de la séance pour estimer l\'énergie.';
+  }
+}
+
+$('#add-exercise').addEventListener('click', () => addExerciseCard());
+// Recompute on duree/ressenti change
+['duree_min', 'ressenti'].forEach(name => {
+  const el = document.querySelector(`#workout-form [name=${name}]`);
+  if (el) el.addEventListener('input', updateSessionSummary);
+});
 
 async function loadWorkouts() {
   const list = await api('/api/workouts');
@@ -180,8 +483,17 @@ async function loadWorkouts() {
     card.className = 'workout-card';
     const pills = (w.exercises || []).map(e => {
       const parts = [e.nom];
-      if (e.series && e.repetitions) parts.push(`${e.series}×${e.repetitions}`);
-      if (e.charge_kg) parts.push(`${e.charge_kg}kg`);
+      let detail = null;
+      if (e.series_details) {
+        try { detail = typeof e.series_details === 'string' ? JSON.parse(e.series_details) : e.series_details; } catch {}
+      }
+      if (Array.isArray(detail) && detail.length) {
+        const seriesText = detail.map(s => `${s.reps ?? '?'}×${s.charge ?? '?'}kg`).join(' / ');
+        parts.push(seriesText);
+      } else {
+        if (e.series && e.repetitions) parts.push(`${e.series}×${e.repetitions}`);
+        if (e.charge_kg) parts.push(`${e.charge_kg}kg`);
+      }
       return `<span class="exercise-pill">${parts.join(' ')}</span>`;
     }).join('');
     card.innerHTML = `
@@ -209,27 +521,26 @@ async function loadWorkouts() {
 $('#workout-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form = e.target;
+  const exercises = $$('.exercise-card').map(readExerciseCard).filter(Boolean);
   const data = {
     date: form.date.value,
     nom: form.nom.value || null,
     duree_min: num(form.duree_min.value),
     ressenti: num(form.ressenti.value),
     notes: form.notes.value || null,
-    exercises: $$('.exercise-row').map(row => ({
-      nom: row.querySelector('[name=ex_nom]').value,
-      series: num(row.querySelector('[name=ex_series]').value),
-      repetitions: row.querySelector('[name=ex_reps]').value || null,
-      charge_kg: num(row.querySelector('[name=ex_charge]').value),
-      repos_sec: num(row.querySelector('[name=ex_repos]').value),
-    })).filter(ex => ex.nom),
+    exercises,
   };
   try {
     await api('/api/workouts', { method: 'POST', body: data });
     form.reset();
     form.date.value = new Date().toISOString().slice(0, 10);
     $('#exercises-list').innerHTML = '';
-    addExerciseRow();
+    exerciseCounter = 0;
+    addExerciseCard();
+    updateSessionSummary();
     loadWorkouts();
+    // Refresh cached bodyweight in case profile/measurements changed
+    cachedBodyweight = null;
   } catch (err) { alert('Erreur : ' + err.message); }
 });
 
@@ -583,7 +894,7 @@ bind('clear-local-btn', () => {
   const today = new Date().toISOString().slice(0, 10);
   $('#measure-form input[name=date]').value = today;
   $('#workout-form input[name=date]').value = today;
-  addExerciseRow();
+  addExerciseCard();
 
   await checkHealth();
   await autoRestoreIfNeeded();

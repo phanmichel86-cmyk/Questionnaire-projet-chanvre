@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="/styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@13.0.0/marked.min.js"></script>
+  <script src="/exercises.js"></script>
 </head>
 <body>
   <header class="hero">
@@ -176,6 +177,18 @@
         <h4>Exercices</h4>
         <div id="exercises-list"></div>
         <button type="button" id="add-exercise" class="secondary">+ Ajouter un exercice</button>
+
+        <div id="session-summary" class="session-summary">
+          <h4>Bilan de la séance</h4>
+          <div class="summary-grid">
+            <div><span class="summary-label">Exercices</span><span class="summary-value" id="sum-exercices">0</span></div>
+            <div><span class="summary-label">Séries totales</span><span class="summary-value" id="sum-series">0</span></div>
+            <div><span class="summary-label">Reps totales</span><span class="summary-value" id="sum-reps">0</span></div>
+            <div><span class="summary-label">Tonnage</span><span class="summary-value" id="sum-tonnage">0 kg</span></div>
+            <div><span class="summary-label">Énergie estimée</span><span class="summary-value" id="sum-kcal">— kcal</span></div>
+          </div>
+          <p class="hint" id="sum-hint">Renseignez durée, ressenti et votre poids dans le profil pour estimer l'énergie dépensée.</p>
+        </div>
 
         <div class="actions">
           <button type="submit" class="primary">Enregistrer la séance</button>

@@ -1,9 +1,10 @@
-const CACHE = 'coach-ia-v2';
+const CACHE = 'coach-ia-v3';
 const CORE = [
   '/',
   '/index.html',
   '/styles.css',
   '/app.js',
+  '/exercises.js',
   '/manifest.webmanifest',
   '/icon.svg',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',

@@ -67,16 +67,22 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     workout_id INTEGER NOT NULL,
     nom TEXT NOT NULL,
+    groupe_musculaire TEXT,
+    type_equipement TEXT,
     series INTEGER,
     repetitions TEXT,
     charge_kg REAL,
     repos_sec INTEGER,
+    series_details TEXT,
     notes TEXT,
     FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE
   );
 `);
 
 try { db.exec('ALTER TABLE profile ADD COLUMN lieu TEXT'); } catch (_) { /* column already exists */ }
+try { db.exec('ALTER TABLE exercises ADD COLUMN groupe_musculaire TEXT'); } catch (_) {}
+try { db.exec('ALTER TABLE exercises ADD COLUMN type_equipement TEXT'); } catch (_) {}
+try { db.exec('ALTER TABLE exercises ADD COLUMN series_details TEXT'); } catch (_) {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS plans (
@@ -209,17 +215,20 @@ app.post('/api/workouts', (req, res) => {
     });
     const workoutId = info.lastInsertRowid;
     const exStmt = db.prepare(`
-      INSERT INTO exercises (workout_id, nom, series, repetitions, charge_kg, repos_sec, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO exercises (workout_id, nom, groupe_musculaire, type_equipement, series, repetitions, charge_kg, repos_sec, series_details, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     for (const e of exercises) {
       exStmt.run(
         workoutId,
         e.nom ?? '',
+        e.groupe_musculaire ?? null,
+        e.type_equipement ?? null,
         e.series ?? null,
         e.repetitions ?? null,
         e.charge_kg ?? null,
         e.repos_sec ?? null,
+        e.series_details ? (typeof e.series_details === 'string' ? e.series_details : JSON.stringify(e.series_details)) : null,
         e.notes ?? null,
       );
     }
@@ -548,18 +557,21 @@ app.post('/api/import', (req, res) => {
     }
 
     const insExercise = db.prepare(`
-      INSERT INTO exercises (id, workout_id, nom, series, repetitions, charge_kg, repos_sec, notes)
-      VALUES (@id, @workout_id, @nom, @series, @repetitions, @charge_kg, @repos_sec, @notes)
+      INSERT INTO exercises (id, workout_id, nom, groupe_musculaire, type_equipement, series, repetitions, charge_kg, repos_sec, series_details, notes)
+      VALUES (@id, @workout_id, @nom, @groupe_musculaire, @type_equipement, @series, @repetitions, @charge_kg, @repos_sec, @series_details, @notes)
     `);
     for (const e of (data.exercises || [])) {
       insExercise.run({
         id: e.id ?? null,
         workout_id: e.workout_id,
         nom: e.nom ?? '',
+        groupe_musculaire: e.groupe_musculaire ?? null,
+        type_equipement: e.type_equipement ?? null,
         series: e.series ?? null,
         repetitions: e.repetitions ?? null,
         charge_kg: e.charge_kg ?? null,
         repos_sec: e.repos_sec ?? null,
+        series_details: e.series_details ?? null,
         notes: e.notes ?? null,
       });
     }
