@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import Database from 'better-sqlite3';
 import Anthropic from '@anthropic-ai/sdk';
+import Groq from 'groq-sdk';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -88,7 +89,22 @@ const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   : null;
 
-const MODEL = 'claude-opus-4-7';
+const groq = process.env.GROQ_API_KEY
+  ? new Groq({ apiKey: process.env.GROQ_API_KEY })
+  : null;
+
+// Provider priority: explicit choice via LLM_PROVIDER, else Anthropic if set, else Groq.
+function pickProvider() {
+  const choice = (process.env.LLM_PROVIDER || '').toLowerCase();
+  if (choice === 'anthropic' && anthropic) return 'anthropic';
+  if (choice === 'groq' && groq) return 'groq';
+  if (anthropic) return 'anthropic';
+  if (groq) return 'groq';
+  return null;
+}
+
+const ANTHROPIC_MODEL = 'claude-opus-4-7';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
 function getProfile() {
   return db.prepare('SELECT * FROM profile WHERE id = 1').get();
@@ -232,10 +248,10 @@ app.delete('/api/plans/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-function requireAnthropic(res) {
-  if (!anthropic) {
+function requireLLM(res) {
+  if (!pickProvider()) {
     res.status(503).json({
-      error: 'Clé API Anthropic manquante. Définissez ANTHROPIC_API_KEY dans .env',
+      error: 'Aucune clé API IA configurée. Définissez GROQ_API_KEY (gratuit, recommandé) ou ANTHROPIC_API_KEY dans les variables d\'environnement.',
     });
     return false;
   }
@@ -244,7 +260,7 @@ function requireAnthropic(res) {
 
 async function callClaude(systemPrompt, userPrompt) {
   const stream = anthropic.messages.stream({
-    model: MODEL,
+    model: ANTHROPIC_MODEL,
     max_tokens: 16000,
     thinking: { type: 'adaptive' },
     system: systemPrompt,
@@ -253,6 +269,26 @@ async function callClaude(systemPrompt, userPrompt) {
   const message = await stream.finalMessage();
   const textBlock = message.content.find(b => b.type === 'text');
   return textBlock?.text ?? '';
+}
+
+async function callGroq(systemPrompt, userPrompt) {
+  const completion = await groq.chat.completions.create({
+    model: GROQ_MODEL,
+    max_tokens: 8192,
+    temperature: 0.7,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+  });
+  return completion.choices[0]?.message?.content ?? '';
+}
+
+async function callLLM(systemPrompt, userPrompt) {
+  const provider = pickProvider();
+  if (provider === 'anthropic') return callClaude(systemPrompt, userPrompt);
+  if (provider === 'groq') return callGroq(systemPrompt, userPrompt);
+  throw new Error('Aucun fournisseur IA configuré');
 }
 
 const ENVIRONMENT_NOTES = {
@@ -283,7 +319,7 @@ function environmentBlock(profile) {
 }
 
 app.post('/api/generate-workout', async (req, res) => {
-  if (!requireAnthropic(res)) return;
+  if (!requireLLM(res)) return;
   try {
     const ctx = buildContextSummary();
     const focus = req.body?.focus || 'séance équilibrée adaptée à mes objectifs';
@@ -309,7 +345,7 @@ ${JSON.stringify(ctx.workouts, null, 2)}
 - Structure : Échauffement → Bloc principal (exercices avec séries × reps × charge ou tempo, repos) → Retour au calme
 - Conclus par 2-3 indicateurs de progression à suivre pour la prochaine séance`;
 
-    const text = await callClaude(COACH_SYSTEM, userPrompt);
+    const text = await callLLM(COACH_SYSTEM, userPrompt);
     const titre = `Séance — ${new Date().toLocaleDateString('fr-FR')} (${focus})`;
     const info = db.prepare(
       'INSERT INTO plans (type, titre, contenu) VALUES (?, ?, ?)'
@@ -322,7 +358,7 @@ ${JSON.stringify(ctx.workouts, null, 2)}
 });
 
 app.post('/api/generate-nutrition', async (req, res) => {
-  if (!requireAnthropic(res)) return;
+  if (!requireLLM(res)) return;
   try {
     const ctx = buildContextSummary();
     const duree = req.body?.duree_jours || 7;
@@ -349,7 +385,7 @@ ${JSON.stringify(ctx.workouts, null, 2)}
 - Adapte les apports aux jours d'entraînement vs jours de repos
 - Inclus une liste de courses synthétique en fin de plan`;
 
-    const text = await callClaude(COACH_SYSTEM, userPrompt);
+    const text = await callLLM(COACH_SYSTEM, userPrompt);
     const titre = `Plan nutrition — ${new Date().toLocaleDateString('fr-FR')} (${duree}j)`;
     const info = db.prepare(
       'INSERT INTO plans (type, titre, contenu) VALUES (?, ?, ?)'
@@ -362,7 +398,7 @@ ${JSON.stringify(ctx.workouts, null, 2)}
 });
 
 app.post('/api/coach-chat', async (req, res) => {
-  if (!requireAnthropic(res)) return;
+  if (!requireLLM(res)) return;
   try {
     const question = req.body?.question;
     if (!question) return res.status(400).json({ error: 'Question manquante' });
@@ -381,7 +417,7 @@ ${JSON.stringify(ctx.workouts, null, 2)}
 # Question
 ${question}`;
 
-    const text = await callClaude(COACH_SYSTEM, userPrompt);
+    const text = await callLLM(COACH_SYSTEM, userPrompt);
     res.json({ reponse: text });
   } catch (err) {
     console.error(err);
@@ -390,7 +426,7 @@ ${question}`;
 });
 
 app.post('/api/progress-analysis', async (req, res) => {
-  if (!requireAnthropic(res)) return;
+  if (!requireLLM(res)) return;
   try {
     const ctx = buildContextSummary();
     const userPrompt = `Analyse en profondeur ma progression à partir de mes données.
@@ -412,7 +448,7 @@ ${JSON.stringify(ctx.workouts, null, 2)}
 - Propose 3 ajustements concrets (entraînement et nutrition) pour les 2 prochaines semaines
 - Sois honnête : si les données sont insuffisantes, dis-le et explique ce qu'il faut suivre`;
 
-    const text = await callClaude(COACH_SYSTEM, userPrompt);
+    const text = await callLLM(COACH_SYSTEM, userPrompt);
     res.json({ analyse: text });
   } catch (err) {
     console.error(err);
@@ -421,16 +457,22 @@ ${JSON.stringify(ctx.workouts, null, 2)}
 });
 
 app.get('/api/health', (req, res) => {
+  const provider = pickProvider();
   res.json({
     ok: true,
+    provider,
     anthropic_configured: !!anthropic,
-    model: MODEL,
+    groq_configured: !!groq,
+    model: provider === 'anthropic' ? ANTHROPIC_MODEL : provider === 'groq' ? GROQ_MODEL : null,
   });
 });
 
 app.listen(PORT, () => {
+  const provider = pickProvider();
   console.log(`Coach sportif IA en écoute sur http://localhost:${PORT}`);
-  if (!anthropic) {
-    console.warn('ANTHROPIC_API_KEY non défini — les endpoints IA renverront 503.');
+  if (provider) {
+    console.log(`IA active : ${provider} (${provider === 'anthropic' ? ANTHROPIC_MODEL : GROQ_MODEL})`);
+  } else {
+    console.warn('Aucune clé API IA configurée — définissez GROQ_API_KEY (gratuit) ou ANTHROPIC_API_KEY.');
   }
 });

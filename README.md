@@ -18,7 +18,9 @@ Application web de coach sportif personnalisé, propulsée par l'API Claude.
 ## Stack technique
 
 - **Backend** : Node.js + Express + SQLite (better-sqlite3)
-- **IA** : `@anthropic-ai/sdk` avec Claude Opus 4.7 (adaptive thinking)
+- **IA** : deux fournisseurs au choix :
+  - **Groq** avec Llama 3.3 70B (gratuit, recommandé)
+  - **Anthropic** Claude Opus 4.7 avec adaptive thinking (qualité top, 5 $ de crédits offerts puis payant)
 - **Frontend** : HTML/CSS/JS vanilla + Chart.js + marked
 - **Base de données** : fichier SQLite local (`data/coach.db`)
 
@@ -37,10 +39,17 @@ Ouvrez ensuite http://localhost:3000
 
 Variables d'environnement (`.env`) :
 
-- `ANTHROPIC_API_KEY` : votre clé API Anthropic (obligatoire pour les fonctions IA)
-- `PORT` : port d'écoute (par défaut 3000)
+| Variable | Description |
+|---|---|
+| `GROQ_API_KEY` | Clé API Groq (gratuite, recommandée) — https://console.groq.com |
+| `ANTHROPIC_API_KEY` | Clé API Anthropic (payante après 5 $ offerts) — https://console.anthropic.com |
+| `LLM_PROVIDER` | `groq` ou `anthropic` — force un fournisseur si les deux sont définis |
+| `GROQ_MODEL` | Modèle Groq (par défaut `llama-3.3-70b-versatile`) |
+| `PORT` | Port d'écoute (par défaut 3000) |
 
-Sans clé API, l'application fonctionne pour la saisie/suivi mais les fonctions IA renvoient une erreur 503.
+**Au moins une clé API IA doit être définie**, sinon les fonctions coach IA renvoient une erreur 503 (le suivi et la saisie continuent de fonctionner).
+
+Priorité : si `LLM_PROVIDER` est défini, il décide. Sinon Anthropic l'emporte sur Groq quand les deux sont configurés.
 
 ## Workflow recommandé
 

@@ -55,10 +55,12 @@ $$('.tab').forEach(btn => {
 async function checkHealth() {
   try {
     const h = await api('/api/health');
-    if (!h.anthropic_configured) {
-      const banner = $('#health-banner');
-      banner.textContent = '⚠️ Clé API Anthropic non configurée. Définissez ANTHROPIC_API_KEY dans .env pour activer le coach IA.';
+    const banner = $('#health-banner');
+    if (!h.provider) {
+      banner.textContent = '⚠️ Aucune clé API IA configurée. Ajoutez GROQ_API_KEY (gratuit) ou ANTHROPIC_API_KEY dans les variables d\'environnement pour activer le coach.';
       banner.classList.remove('hidden');
+    } else {
+      banner.classList.add('hidden');
     }
   } catch (e) { console.error(e); }
 }
