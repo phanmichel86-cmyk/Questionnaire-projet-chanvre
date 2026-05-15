@@ -19,7 +19,13 @@
 </head>
 <body>
   <header class="hero">
-    <h1>🏋️ Coach Sportif IA</h1>
+    <div class="hero-top">
+      <h1>🏋️ Coach Sportif IA</h1>
+      <div id="user-chip" class="user-chip hidden">
+        <span id="user-name"></span>
+        <button id="logout-link" type="button" class="user-chip-logout" title="Se déconnecter">⏻</button>
+      </div>
+    </div>
     <p class="subtitle">Entraînements, nutrition et suivi de progression, propulsés par Claude</p>
     <div id="health-banner" class="banner hidden"></div>
   </header>
@@ -292,11 +298,21 @@
       </div>
 
       <div class="card" id="session-card">
-        <h3>🔒 Session</h3>
+        <h3>🔒 Mon compte</h3>
         <p class="hint" id="auth-status">—</p>
-        <div class="actions">
-          <button id="logout-btn" class="danger">Se déconnecter</button>
-        </div>
+
+        <form id="change-password-form" class="grid-2" style="margin-top:1rem">
+          <label>Mot de passe actuel
+            <input name="current_password" type="password" autocomplete="current-password" required />
+          </label>
+          <label>Nouveau mot de passe (6+ caractères)
+            <input name="new_password" type="password" autocomplete="new-password" minlength="6" required />
+          </label>
+          <div class="actions" style="grid-column: 1 / -1">
+            <button type="submit" class="secondary">Changer le mot de passe</button>
+            <button id="logout-btn" type="button" class="danger">Se déconnecter</button>
+          </div>
+        </form>
       </div>
     </section>
 

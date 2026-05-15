@@ -11,10 +11,18 @@
 <body>
   <div class="login-container">
     <h1>🏋️ Coach IA</h1>
-    <p class="subtitle">Connexion</p>
-    <form id="login-form" class="card">
+
+    <div class="auth-tabs">
+      <button id="tab-login" class="auth-tab active" type="button">Se connecter</button>
+      <button id="tab-register" class="auth-tab" type="button">Créer un compte</button>
+    </div>
+
+    <form id="login-form" class="card auth-form">
+      <label>Nom d'utilisateur
+        <input name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" autofocus required />
+      </label>
       <label>Mot de passe
-        <input name="password" type="password" autocomplete="current-password" autofocus required />
+        <input name="password" type="password" autocomplete="current-password" required />
       </label>
       <label class="checkbox-row">
         <input name="remember" type="checkbox" checked /> Se souvenir de moi (1 an)
@@ -22,20 +30,49 @@
       <button type="submit" class="primary">Se connecter</button>
       <p id="login-error" class="login-error hidden"></p>
     </form>
+
+    <form id="register-form" class="card auth-form hidden">
+      <label>Nom d'utilisateur souhaité
+        <input name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" placeholder="ex: marie" required />
+      </label>
+      <label>Mot de passe (6 caractères min)
+        <input name="password" type="password" autocomplete="new-password" minlength="6" required />
+      </label>
+      <label>Code d'invitation
+        <input name="invite_code" type="text" autocomplete="off" placeholder="Demandez-le à l'administrateur" required />
+      </label>
+      <button type="submit" class="primary">Créer mon compte</button>
+      <p id="register-error" class="login-error hidden"></p>
+      <p class="hint" style="margin-top:0.75rem">Une fois inscrite, vos données (profil, séances, mesures) seront totalement séparées de celles des autres utilisateurs.</p>
+    </form>
   </div>
 
   <script>
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const password = e.target.password.value;
-      const remember = e.target.remember.checked;
-      const errEl = document.getElementById('login-error');
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+
+    function switchTab(target) {
+      const isLogin = target === 'login';
+      tabLogin.classList.toggle('active', isLogin);
+      tabRegister.classList.toggle('active', !isLogin);
+      loginForm.classList.toggle('hidden', !isLogin);
+      registerForm.classList.toggle('hidden', isLogin);
+    }
+    tabLogin.addEventListener('click', () => switchTab('login'));
+    tabRegister.addEventListener('click', () => switchTab('register'));
+
+    async function submitForm(form, endpoint, errId) {
+      const errEl = document.getElementById(errId);
       errEl.classList.add('hidden');
+      const data = Object.fromEntries(new FormData(form));
+      if ('remember' in data) data.remember = form.remember.checked;
       try {
-        const res = await fetch('/api/login', {
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password, remember }),
+          body: JSON.stringify(data),
         });
         if (res.ok) {
           window.location.href = '/';
@@ -48,7 +85,23 @@
         errEl.textContent = 'Erreur réseau : ' + err.message;
         errEl.classList.remove('hidden');
       }
+    }
+
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      submitForm(loginForm, '/api/login', 'login-error');
     });
+    registerForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      submitForm(registerForm, '/api/register', 'register-error');
+    });
+
+    // If registration is not enabled, hide the register tab + warn
+    fetch('/api/health').then(r => r.json()).then(h => {
+      if (!h.registration_enabled) {
+        tabRegister.style.display = 'none';
+      }
+    }).catch(() => {});
   </script>
 </body>
 </html>

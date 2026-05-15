@@ -12,90 +12,23 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '2mb' }));
 
-// ---- Authentication (simple shared password) ----
-const APP_PASSWORD = process.env.APP_PASSWORD || null;
-const SESSION_TTL_DAYS = parseInt(process.env.SESSION_TTL_DAYS || '365', 10);
-const COOKIE_NAME = 'coach_session';
-
-function sessionSecret() {
-  return crypto.createHash('sha256').update((APP_PASSWORD || '') + '|coach-ia-salt').digest();
-}
-function makeToken() {
-  return crypto.createHmac('sha256', sessionSecret()).update('logged_in_v1').digest('hex');
-}
-function parseCookies(header) {
-  const out = {};
-  if (!header) return out;
-  for (const part of header.split(';')) {
-    const eq = part.indexOf('=');
-    if (eq === -1) continue;
-    out[part.slice(0, eq).trim()] = part.slice(eq + 1).trim();
-  }
-  return out;
-}
-function cookieHeader(name, value, opts = {}) {
-  const parts = [`${name}=${value}`, 'HttpOnly', 'Path=/', 'SameSite=Lax'];
-  if (process.env.NODE_ENV === 'production') parts.push('Secure');
-  if (opts.maxAgeSec) parts.push(`Max-Age=${opts.maxAgeSec}`);
-  return parts.join('; ');
-}
-function safeEq(a, b) {
-  const ab = Buffer.from(a || '');
-  const bb = Buffer.from(b || '');
-  if (ab.length !== bb.length) return false;
-  return crypto.timingSafeEqual(ab, bb);
-}
-function isAuthenticated(req) {
-  if (!APP_PASSWORD) return true;
-  const cookies = parseCookies(req.headers.cookie);
-  return safeEq(cookies[COOKIE_NAME] || '', makeToken());
-}
-
-const AUTH_PUBLIC_PATHS = new Set([
-  '/login.html',
-  '/styles.css',
-  '/icon.svg',
-  '/manifest.webmanifest',
-  '/favicon.ico',
-  '/sw.js',
-]);
-
-app.use((req, res, next) => {
-  if (isAuthenticated(req)) return next();
-  if (req.path === '/api/login' || req.path === '/api/health') return next();
-  if (AUTH_PUBLIC_PATHS.has(req.path)) return next();
-  if (req.path.startsWith('/api/')) {
-    return res.status(401).json({ error: 'auth_required' });
-  }
-  return res.redirect('/login.html');
-});
-
-app.post('/api/login', (req, res) => {
-  if (!APP_PASSWORD) return res.json({ ok: true, auth_required: false });
-  const { password, remember } = req.body || {};
-  if (!password || !safeEq(password, APP_PASSWORD)) {
-    return res.status(401).json({ error: 'Mot de passe incorrect' });
-  }
-  const maxAgeSec = remember === false ? undefined : SESSION_TTL_DAYS * 24 * 3600;
-  res.setHeader('Set-Cookie', cookieHeader(COOKIE_NAME, makeToken(), { maxAgeSec }));
-  res.json({ ok: true });
-});
-
-app.post('/api/logout', (req, res) => {
-  res.setHeader('Set-Cookie', cookieHeader(COOKIE_NAME, '', { maxAgeSec: 0 }));
-  res.json({ ok: true });
-});
-
-app.use(express.static(path.join(__dirname, 'public')));
-
+// ==================== Database setup ====================
 const dataDir = path.join(__dirname, 'data');
 fs.mkdirSync(dataDir, { recursive: true });
 const db = new Database(path.join(dataDir, 'coach.db'));
 db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS profile (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     nom TEXT,
@@ -111,9 +44,6 @@ db.exec(`
     preferences_alim TEXT,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
-
-  -- Migration for existing DBs created before the lieu column
-  -- (SQLite ignores the ADD COLUMN if it would error; wrap in try/catch in JS)
 
   CREATE TABLE IF NOT EXISTS measurements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -153,20 +83,7 @@ db.exec(`
     notes TEXT,
     FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE
   );
-`);
 
-try { db.exec('ALTER TABLE profile ADD COLUMN lieu TEXT'); } catch (_) { /* column already exists */ }
-try { db.exec('ALTER TABLE exercises ADD COLUMN groupe_musculaire TEXT'); } catch (_) {}
-try { db.exec('ALTER TABLE exercises ADD COLUMN type_equipement TEXT'); } catch (_) {}
-try { db.exec('ALTER TABLE exercises ADD COLUMN series_details TEXT'); } catch (_) {}
-try { db.exec('ALTER TABLE exercises ADD COLUMN duree_min REAL'); } catch (_) {}
-try { db.exec('ALTER TABLE exercises ADD COLUMN distance_km REAL'); } catch (_) {}
-try { db.exec('ALTER TABLE exercises ADD COLUMN vitesse_kmh REAL'); } catch (_) {}
-try { db.exec('ALTER TABLE exercises ADD COLUMN inclinaison_pct REAL'); } catch (_) {}
-try { db.exec('ALTER TABLE exercises ADD COLUMN niveau_resistance INTEGER'); } catch (_) {}
-try { db.exec('ALTER TABLE exercises ADD COLUMN kcal_machine REAL'); } catch (_) {}
-
-db.exec(`
   CREATE TABLE IF NOT EXISTS plans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     type TEXT NOT NULL,
@@ -176,15 +93,257 @@ db.exec(`
   );
 `);
 
+// Idempotent column additions for older DBs
+for (const stmt of [
+  'ALTER TABLE profile ADD COLUMN lieu TEXT',
+  'ALTER TABLE profile ADD COLUMN user_id INTEGER',
+  'ALTER TABLE measurements ADD COLUMN user_id INTEGER',
+  'ALTER TABLE workouts ADD COLUMN user_id INTEGER',
+  'ALTER TABLE plans ADD COLUMN user_id INTEGER',
+  'ALTER TABLE exercises ADD COLUMN groupe_musculaire TEXT',
+  'ALTER TABLE exercises ADD COLUMN type_equipement TEXT',
+  'ALTER TABLE exercises ADD COLUMN series_details TEXT',
+  'ALTER TABLE exercises ADD COLUMN duree_min REAL',
+  'ALTER TABLE exercises ADD COLUMN distance_km REAL',
+  'ALTER TABLE exercises ADD COLUMN vitesse_kmh REAL',
+  'ALTER TABLE exercises ADD COLUMN inclinaison_pct REAL',
+  'ALTER TABLE exercises ADD COLUMN niveau_resistance INTEGER',
+  'ALTER TABLE exercises ADD COLUMN kcal_machine REAL',
+]) {
+  try { db.exec(stmt); } catch (_) {}
+}
+
+// One-time migration: drop the "id = 1" CHECK constraint on profile so each
+// user can have their own row. Detect by inspecting the CREATE TABLE statement.
+(function migrateProfileTable() {
+  const row = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='profile'").get();
+  if (row && /CHECK\s*\(\s*id\s*=\s*1\s*\)/i.test(row.sql)) {
+    console.log('→ Migration: profile table rebuilt for multi-user schema.');
+    db.exec(`
+      BEGIN;
+      ALTER TABLE profile RENAME TO profile_legacy;
+      CREATE TABLE profile (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER UNIQUE,
+        nom TEXT,
+        age INTEGER,
+        sexe TEXT,
+        taille_cm REAL,
+        niveau TEXT,
+        objectif TEXT,
+        frequence_hebdo INTEGER,
+        lieu TEXT,
+        equipement TEXT,
+        contraintes TEXT,
+        preferences_alim TEXT,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO profile (user_id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim, updated_at)
+        SELECT user_id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim, updated_at FROM profile_legacy;
+      DROP TABLE profile_legacy;
+      COMMIT;
+    `);
+  }
+})();
+
+// ==================== Authentication ====================
+const APP_PASSWORD = process.env.APP_PASSWORD || null;
+const INVITE_CODE = process.env.INVITE_CODE || null;
+const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin').toLowerCase();
+const SESSION_TTL_DAYS = parseInt(process.env.SESSION_TTL_DAYS || '365', 10);
+const SESSION_SECRET_RAW = process.env.SESSION_SECRET || process.env.APP_PASSWORD || 'coach-ia-default-secret-please-set-SESSION_SECRET-or-APP_PASSWORD';
+const SESSION_SECRET = crypto.createHash('sha256').update(SESSION_SECRET_RAW + '|coach-ia-v2').digest();
+const COOKIE_NAME = 'coach_session';
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16);
+  const N = 16384, r = 8, p = 1, keyLen = 32;
+  const hash = crypto.scryptSync(password, salt, keyLen, { N, r, p });
+  return `scrypt$${N}$${r}$${p}$${salt.toString('hex')}$${hash.toString('hex')}`;
+}
+
+function verifyPassword(password, stored) {
+  if (!stored || !stored.startsWith('scrypt$')) return false;
+  const parts = stored.split('$');
+  if (parts.length !== 6) return false;
+  try {
+    const N = parseInt(parts[1], 10);
+    const r = parseInt(parts[2], 10);
+    const p = parseInt(parts[3], 10);
+    const salt = Buffer.from(parts[4], 'hex');
+    const expected = Buffer.from(parts[5], 'hex');
+    const actual = crypto.scryptSync(password, salt, expected.length, { N, r, p });
+    return crypto.timingSafeEqual(actual, expected);
+  } catch { return false; }
+}
+
+function safeEq(a, b) {
+  const ab = Buffer.from(a || '');
+  const bb = Buffer.from(b || '');
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
+function sessionHmac(payload) {
+  return crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('hex').slice(0, 32);
+}
+
+function createSessionToken(userId) {
+  return `${userId}.${sessionHmac(`u:${userId}:v2`)}`;
+}
+
+function verifySessionToken(token) {
+  if (!token) return null;
+  const [idStr, hmac] = token.split('.');
+  const userId = parseInt(idStr, 10);
+  if (!Number.isFinite(userId) || userId <= 0 || !hmac) return null;
+  if (!safeEq(hmac, sessionHmac(`u:${userId}:v2`))) return null;
+  return userId;
+}
+
+function parseCookies(header) {
+  const out = {};
+  if (!header) return out;
+  for (const part of header.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq === -1) continue;
+    out[part.slice(0, eq).trim()] = part.slice(eq + 1).trim();
+  }
+  return out;
+}
+
+function cookieHeader(name, value, opts = {}) {
+  const parts = [`${name}=${value}`, 'HttpOnly', 'Path=/', 'SameSite=Lax'];
+  if (process.env.NODE_ENV === 'production') parts.push('Secure');
+  if (opts.maxAgeSec !== undefined) parts.push(`Max-Age=${opts.maxAgeSec}`);
+  return parts.join('; ');
+}
+
+// One-time migration: if there are no users but there's existing data and an
+// APP_PASSWORD, create an admin account and assign all orphan rows to it.
+(function migrateLegacyData() {
+  const userCount = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
+  if (userCount > 0) return;
+
+  const hasData =
+    db.prepare('SELECT COUNT(*) AS n FROM workouts').get().n > 0 ||
+    db.prepare('SELECT COUNT(*) AS n FROM measurements').get().n > 0 ||
+    db.prepare('SELECT COUNT(*) AS n FROM plans').get().n > 0 ||
+    db.prepare('SELECT COUNT(*) AS n FROM profile').get().n > 0;
+
+  if (!hasData) return;
+
+  if (!APP_PASSWORD) {
+    console.warn('⚠️  Données existantes détectées, mais APP_PASSWORD non défini : migration multi-utilisateur reportée. Définissez APP_PASSWORD pour migrer vos données vers le compte admin.');
+    return;
+  }
+
+  const adminHash = hashPassword(APP_PASSWORD);
+  const result = db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)').run(ADMIN_USERNAME, adminHash);
+  const adminId = result.lastInsertRowid;
+  db.prepare('UPDATE profile SET user_id = ? WHERE user_id IS NULL').run(adminId);
+  db.prepare('UPDATE measurements SET user_id = ? WHERE user_id IS NULL').run(adminId);
+  db.prepare('UPDATE workouts SET user_id = ? WHERE user_id IS NULL').run(adminId);
+  db.prepare('UPDATE plans SET user_id = ? WHERE user_id IS NULL').run(adminId);
+  console.log(`✓ Migration multi-utilisateur : compte "${ADMIN_USERNAME}" créé (mot de passe = APP_PASSWORD), toutes les données existantes lui ont été assignées.`);
+})();
+
+// ==================== Auth middleware ====================
+const AUTH_PUBLIC_PATHS = new Set([
+  '/login.html',
+  '/styles.css',
+  '/icon.svg',
+  '/manifest.webmanifest',
+  '/favicon.ico',
+  '/sw.js',
+]);
+const AUTH_PUBLIC_API = new Set(['/api/login', '/api/register', '/api/health']);
+
+app.use((req, res, next) => {
+  const cookies = parseCookies(req.headers.cookie);
+  const userId = verifySessionToken(cookies[COOKIE_NAME]);
+  if (userId) {
+    const user = db.prepare('SELECT id, username FROM users WHERE id = ?').get(userId);
+    if (user) {
+      req.userId = user.id;
+      req.username = user.username;
+    }
+  }
+
+  if (AUTH_PUBLIC_PATHS.has(req.path)) return next();
+  if (AUTH_PUBLIC_API.has(req.path)) return next();
+
+  if (!req.userId) {
+    if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'auth_required' });
+    return res.redirect('/login.html');
+  }
+  next();
+});
+
+// ==================== Auth routes ====================
+app.post('/api/login', (req, res) => {
+  const { username, password, remember } = req.body || {};
+  if (!username || !password) return res.status(400).json({ error: 'Identifiants requis' });
+  const clean = String(username).trim().toLowerCase();
+  const user = db.prepare('SELECT id, username, password_hash FROM users WHERE username = ?').get(clean);
+  if (!user || !verifyPassword(password, user.password_hash)) {
+    return res.status(401).json({ error: 'Identifiants incorrects' });
+  }
+  const maxAgeSec = remember === false ? undefined : SESSION_TTL_DAYS * 24 * 3600;
+  res.setHeader('Set-Cookie', cookieHeader(COOKIE_NAME, createSessionToken(user.id), { maxAgeSec }));
+  res.json({ ok: true, username: user.username });
+});
+
+app.post('/api/register', (req, res) => {
+  if (!INVITE_CODE) return res.status(403).json({ error: 'L\'inscription est désactivée sur cette instance. Demandez à l\'administrateur d\'activer un code d\'invitation.' });
+  const { username, password, invite_code } = req.body || {};
+  if (!username || !password || !invite_code) return res.status(400).json({ error: 'Tous les champs sont requis' });
+  if (!safeEq(String(invite_code), INVITE_CODE)) return res.status(403).json({ error: 'Code d\'invitation invalide' });
+  const clean = String(username).trim().toLowerCase();
+  if (!/^[a-z0-9_\-]{2,32}$/.test(clean)) {
+    return res.status(400).json({ error: 'Nom d\'utilisateur invalide (2-32 caractères, lettres minuscules, chiffres, _ ou -)' });
+  }
+  if (String(password).length < 6) return res.status(400).json({ error: 'Mot de passe trop court (6 caractères minimum)' });
+  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(clean);
+  if (existing) return res.status(409).json({ error: 'Ce nom d\'utilisateur est déjà pris' });
+  const hash = hashPassword(password);
+  const result = db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)').run(clean, hash);
+  res.setHeader('Set-Cookie', cookieHeader(COOKIE_NAME, createSessionToken(result.lastInsertRowid), { maxAgeSec: SESSION_TTL_DAYS * 24 * 3600 }));
+  res.json({ ok: true, username: clean });
+});
+
+app.post('/api/logout', (req, res) => {
+  res.setHeader('Set-Cookie', cookieHeader(COOKIE_NAME, '', { maxAgeSec: 0 }));
+  res.json({ ok: true });
+});
+
+app.get('/api/me', (req, res) => {
+  res.json({ id: req.userId, username: req.username });
+});
+
+app.post('/api/change-password', (req, res) => {
+  const { current_password, new_password } = req.body || {};
+  if (!current_password || !new_password) return res.status(400).json({ error: 'Champs requis' });
+  if (String(new_password).length < 6) return res.status(400).json({ error: 'Mot de passe trop court (6 caractères minimum)' });
+  const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.userId);
+  if (!row || !verifyPassword(current_password, row.password_hash)) {
+    return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+  }
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(new_password), req.userId);
+  res.json({ ok: true });
+});
+
+// ==================== Static files (auth-gated above) ====================
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ==================== LLM ====================
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   : null;
-
 const groq = process.env.GROQ_API_KEY
   ? new Groq({ apiKey: process.env.GROQ_API_KEY })
   : null;
 
-// Provider priority: explicit choice via LLM_PROVIDER, else Anthropic if set, else Groq.
 function pickProvider() {
   const choice = (process.env.LLM_PROVIDER || '').toLowerCase();
   if (choice === 'anthropic' && anthropic) return 'anthropic';
@@ -197,67 +356,78 @@ function pickProvider() {
 const ANTHROPIC_MODEL = 'claude-opus-4-7';
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
-function getProfile() {
-  return db.prepare('SELECT * FROM profile WHERE id = 1').get();
+// ==================== Per-user data helpers ====================
+function getProfile(userId) {
+  return db.prepare('SELECT * FROM profile WHERE user_id = ?').get(userId);
 }
 
-function getRecentMeasurements(limit = 10) {
-  return db.prepare('SELECT * FROM measurements ORDER BY date DESC, id DESC LIMIT ?').all(limit);
+function getRecentMeasurements(userId, limit = 10) {
+  return db.prepare('SELECT * FROM measurements WHERE user_id = ? ORDER BY date DESC, id DESC LIMIT ?').all(userId, limit);
 }
 
-function getRecentWorkouts(limit = 10) {
-  const workouts = db.prepare('SELECT * FROM workouts ORDER BY date DESC, id DESC LIMIT ?').all(limit);
+function getRecentWorkouts(userId, limit = 10) {
+  const workouts = db.prepare('SELECT * FROM workouts WHERE user_id = ? ORDER BY date DESC, id DESC LIMIT ?').all(userId, limit);
   const exStmt = db.prepare('SELECT * FROM exercises WHERE workout_id = ?');
   return workouts.map(w => ({ ...w, exercises: exStmt.all(w.id) }));
 }
 
-function buildContextSummary() {
-  const profile = getProfile();
-  const measurements = getRecentMeasurements(8);
-  const workouts = getRecentWorkouts(8);
-  return { profile, measurements, workouts };
+function buildContextSummary(userId) {
+  return {
+    profile: getProfile(userId),
+    measurements: getRecentMeasurements(userId, 8),
+    workouts: getRecentWorkouts(userId, 8),
+  };
 }
 
+// ==================== Profile ====================
 app.get('/api/profile', (req, res) => {
-  res.json(getProfile() || null);
+  res.json(getProfile(req.userId) || null);
 });
 
 app.post('/api/profile', (req, res) => {
   const p = req.body || {};
-  db.prepare(`
-    INSERT INTO profile (id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim, updated_at)
-    VALUES (1, @nom, @age, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @lieu, @equipement, @contraintes, @preferences_alim, CURRENT_TIMESTAMP)
-    ON CONFLICT(id) DO UPDATE SET
-      nom=@nom, age=@age, sexe=@sexe, taille_cm=@taille_cm, niveau=@niveau,
-      objectif=@objectif, frequence_hebdo=@frequence_hebdo, lieu=@lieu, equipement=@equipement,
-      contraintes=@contraintes, preferences_alim=@preferences_alim,
-      updated_at=CURRENT_TIMESTAMP
-  `).run({
-    nom: p.nom ?? null,
-    age: p.age ?? null,
-    sexe: p.sexe ?? null,
-    taille_cm: p.taille_cm ?? null,
-    niveau: p.niveau ?? null,
-    objectif: p.objectif ?? null,
-    frequence_hebdo: p.frequence_hebdo ?? null,
-    lieu: p.lieu ?? null,
-    equipement: p.equipement ?? null,
-    contraintes: p.contraintes ?? null,
-    preferences_alim: p.preferences_alim ?? null,
-  });
-  res.json(getProfile());
+  const existing = db.prepare('SELECT id FROM profile WHERE user_id = ?').get(req.userId);
+  if (existing) {
+    db.prepare(`
+      UPDATE profile SET
+        nom=@nom, age=@age, sexe=@sexe, taille_cm=@taille_cm, niveau=@niveau,
+        objectif=@objectif, frequence_hebdo=@frequence_hebdo, lieu=@lieu, equipement=@equipement,
+        contraintes=@contraintes, preferences_alim=@preferences_alim, updated_at=CURRENT_TIMESTAMP
+      WHERE user_id=@user_id
+    `).run({
+      user_id: req.userId,
+      nom: p.nom ?? null, age: p.age ?? null, sexe: p.sexe ?? null, taille_cm: p.taille_cm ?? null,
+      niveau: p.niveau ?? null, objectif: p.objectif ?? null, frequence_hebdo: p.frequence_hebdo ?? null,
+      lieu: p.lieu ?? null, equipement: p.equipement ?? null, contraintes: p.contraintes ?? null,
+      preferences_alim: p.preferences_alim ?? null,
+    });
+  } else {
+    db.prepare(`
+      INSERT INTO profile (user_id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim)
+      VALUES (@user_id, @nom, @age, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @lieu, @equipement, @contraintes, @preferences_alim)
+    `).run({
+      user_id: req.userId,
+      nom: p.nom ?? null, age: p.age ?? null, sexe: p.sexe ?? null, taille_cm: p.taille_cm ?? null,
+      niveau: p.niveau ?? null, objectif: p.objectif ?? null, frequence_hebdo: p.frequence_hebdo ?? null,
+      lieu: p.lieu ?? null, equipement: p.equipement ?? null, contraintes: p.contraintes ?? null,
+      preferences_alim: p.preferences_alim ?? null,
+    });
+  }
+  res.json(getProfile(req.userId));
 });
 
+// ==================== Measurements ====================
 app.get('/api/measurements', (req, res) => {
-  res.json(db.prepare('SELECT * FROM measurements ORDER BY date ASC, id ASC').all());
+  res.json(db.prepare('SELECT * FROM measurements WHERE user_id = ? ORDER BY date ASC, id ASC').all(req.userId));
 });
 
 app.post('/api/measurements', (req, res) => {
   const m = req.body || {};
   const info = db.prepare(`
-    INSERT INTO measurements (date, poids_kg, pct_muscle, pct_graisse, tour_taille_cm, tour_hanches_cm, tour_bras_cm, tour_cuisse_cm, notes)
-    VALUES (@date, @poids_kg, @pct_muscle, @pct_graisse, @tour_taille_cm, @tour_hanches_cm, @tour_bras_cm, @tour_cuisse_cm, @notes)
+    INSERT INTO measurements (user_id, date, poids_kg, pct_muscle, pct_graisse, tour_taille_cm, tour_hanches_cm, tour_bras_cm, tour_cuisse_cm, notes)
+    VALUES (@user_id, @date, @poids_kg, @pct_muscle, @pct_graisse, @tour_taille_cm, @tour_hanches_cm, @tour_bras_cm, @tour_cuisse_cm, @notes)
   `).run({
+    user_id: req.userId,
     date: m.date || new Date().toISOString().slice(0, 10),
     poids_kg: m.poids_kg ?? null,
     pct_muscle: m.pct_muscle ?? null,
@@ -268,16 +438,17 @@ app.post('/api/measurements', (req, res) => {
     tour_cuisse_cm: m.tour_cuisse_cm ?? null,
     notes: m.notes ?? null,
   });
-  res.json(db.prepare('SELECT * FROM measurements WHERE id = ?').get(info.lastInsertRowid));
+  res.json(db.prepare('SELECT * FROM measurements WHERE id = ? AND user_id = ?').get(info.lastInsertRowid, req.userId));
 });
 
 app.delete('/api/measurements/:id', (req, res) => {
-  db.prepare('DELETE FROM measurements WHERE id = ?').run(req.params.id);
+  db.prepare('DELETE FROM measurements WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
   res.json({ ok: true });
 });
 
+// ==================== Workouts ====================
 app.get('/api/workouts', (req, res) => {
-  res.json(getRecentWorkouts(50));
+  res.json(getRecentWorkouts(req.userId, 50));
 });
 
 app.post('/api/workouts', (req, res) => {
@@ -286,9 +457,10 @@ app.post('/api/workouts', (req, res) => {
 
   const tx = db.transaction(() => {
     const info = db.prepare(`
-      INSERT INTO workouts (date, nom, duree_min, ressenti, notes)
-      VALUES (@date, @nom, @duree_min, @ressenti, @notes)
+      INSERT INTO workouts (user_id, date, nom, duree_min, ressenti, notes)
+      VALUES (@user_id, @date, @nom, @duree_min, @ressenti, @notes)
     `).run({
+      user_id: req.userId,
       date: w.date || new Date().toISOString().slice(0, 10),
       nom: w.nom ?? null,
       duree_min: w.duree_min ?? null,
@@ -330,24 +502,27 @@ app.post('/api/workouts', (req, res) => {
 });
 
 app.delete('/api/workouts/:id', (req, res) => {
-  db.prepare('DELETE FROM workouts WHERE id = ?').run(req.params.id);
+  // Only delete if it belongs to current user
+  db.prepare('DELETE FROM workouts WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
   res.json({ ok: true });
 });
 
+// ==================== Plans ====================
 app.get('/api/plans', (req, res) => {
   const type = req.query.type;
   if (type) {
-    res.json(db.prepare('SELECT * FROM plans WHERE type = ? ORDER BY created_at DESC').all(type));
+    res.json(db.prepare('SELECT * FROM plans WHERE user_id = ? AND type = ? ORDER BY created_at DESC').all(req.userId, type));
   } else {
-    res.json(db.prepare('SELECT * FROM plans ORDER BY created_at DESC').all());
+    res.json(db.prepare('SELECT * FROM plans WHERE user_id = ? ORDER BY created_at DESC').all(req.userId));
   }
 });
 
 app.delete('/api/plans/:id', (req, res) => {
-  db.prepare('DELETE FROM plans WHERE id = ?').run(req.params.id);
+  db.prepare('DELETE FROM plans WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
   res.json({ ok: true });
 });
 
+// ==================== AI ====================
 function requireLLM(res) {
   if (!pickProvider()) {
     res.status(503).json({
@@ -421,7 +596,7 @@ function environmentBlock(profile) {
 app.post('/api/generate-workout', async (req, res) => {
   if (!requireLLM(res)) return;
   try {
-    const ctx = buildContextSummary();
+    const ctx = buildContextSummary(req.userId);
     const focus = req.body?.focus || 'séance équilibrée adaptée à mes objectifs';
     const duree = req.body?.duree_min || 45;
 
@@ -448,8 +623,8 @@ ${JSON.stringify(ctx.workouts, null, 2)}
     const text = await callLLM(COACH_SYSTEM, userPrompt);
     const titre = `Séance — ${new Date().toLocaleDateString('fr-FR')} (${focus})`;
     const info = db.prepare(
-      'INSERT INTO plans (type, titre, contenu) VALUES (?, ?, ?)'
-    ).run('workout', titre, text);
+      'INSERT INTO plans (user_id, type, titre, contenu) VALUES (?, ?, ?, ?)'
+    ).run(req.userId, 'workout', titre, text);
     res.json({ id: info.lastInsertRowid, titre, contenu: text });
   } catch (err) {
     console.error(err);
@@ -460,7 +635,7 @@ ${JSON.stringify(ctx.workouts, null, 2)}
 app.post('/api/generate-nutrition', async (req, res) => {
   if (!requireLLM(res)) return;
   try {
-    const ctx = buildContextSummary();
+    const ctx = buildContextSummary(req.userId);
     const duree = req.body?.duree_jours || 7;
     const calories_cible = req.body?.calories_cible || null;
 
@@ -488,8 +663,8 @@ ${JSON.stringify(ctx.workouts, null, 2)}
     const text = await callLLM(COACH_SYSTEM, userPrompt);
     const titre = `Plan nutrition — ${new Date().toLocaleDateString('fr-FR')} (${duree}j)`;
     const info = db.prepare(
-      'INSERT INTO plans (type, titre, contenu) VALUES (?, ?, ?)'
-    ).run('nutrition', titre, text);
+      'INSERT INTO plans (user_id, type, titre, contenu) VALUES (?, ?, ?, ?)'
+    ).run(req.userId, 'nutrition', titre, text);
     res.json({ id: info.lastInsertRowid, titre, contenu: text });
   } catch (err) {
     console.error(err);
@@ -503,7 +678,7 @@ app.post('/api/coach-chat', async (req, res) => {
     const question = req.body?.question;
     if (!question) return res.status(400).json({ error: 'Question manquante' });
 
-    const ctx = buildContextSummary();
+    const ctx = buildContextSummary(req.userId);
     const userPrompt = `# Contexte de l'utilisateur
 ## Profil
 ${JSON.stringify(ctx.profile, null, 2)}
@@ -528,7 +703,7 @@ ${question}`;
 app.post('/api/progress-analysis', async (req, res) => {
   if (!requireLLM(res)) return;
   try {
-    const ctx = buildContextSummary();
+    const ctx = buildContextSummary(req.userId);
     const userPrompt = `Analyse en profondeur ma progression à partir de mes données.
 
 # Données
@@ -556,16 +731,20 @@ ${JSON.stringify(ctx.workouts, null, 2)}
   }
 });
 
-// --- Export / Import ---
+// ==================== Export / Import (scoped to current user) ====================
 app.get('/api/export', (req, res) => {
-  const profile = getProfile();
-  const measurements = db.prepare('SELECT * FROM measurements ORDER BY id ASC').all();
-  const workouts = db.prepare('SELECT * FROM workouts ORDER BY id ASC').all();
-  const exercises = db.prepare('SELECT * FROM exercises ORDER BY id ASC').all();
-  const plans = db.prepare('SELECT * FROM plans ORDER BY id ASC').all();
+  const profile = getProfile(req.userId);
+  const measurements = db.prepare('SELECT * FROM measurements WHERE user_id = ? ORDER BY id ASC').all(req.userId);
+  const workouts = db.prepare('SELECT * FROM workouts WHERE user_id = ? ORDER BY id ASC').all(req.userId);
+  const workoutIds = workouts.map(w => w.id);
+  const exercises = workoutIds.length
+    ? db.prepare(`SELECT * FROM exercises WHERE workout_id IN (${workoutIds.map(() => '?').join(',')}) ORDER BY id ASC`).all(...workoutIds)
+    : [];
+  const plans = db.prepare('SELECT * FROM plans WHERE user_id = ? ORDER BY id ASC').all(req.userId);
   res.json({
-    version: 1,
+    version: 2,
     exported_at: new Date().toISOString(),
+    username: req.username,
     profile,
     measurements,
     workouts,
@@ -581,19 +760,23 @@ app.post('/api/import', (req, res) => {
   }
 
   const tx = db.transaction(() => {
-    // Wipe — full replace semantics
-    db.prepare('DELETE FROM exercises').run();
-    db.prepare('DELETE FROM workouts').run();
-    db.prepare('DELETE FROM measurements').run();
-    db.prepare('DELETE FROM plans').run();
-    db.prepare('DELETE FROM profile').run();
+    // Wipe only the current user's data
+    const myWorkoutIds = db.prepare('SELECT id FROM workouts WHERE user_id = ?').all(req.userId).map(r => r.id);
+    if (myWorkoutIds.length) {
+      db.prepare(`DELETE FROM exercises WHERE workout_id IN (${myWorkoutIds.map(() => '?').join(',')})`).run(...myWorkoutIds);
+    }
+    db.prepare('DELETE FROM workouts WHERE user_id = ?').run(req.userId);
+    db.prepare('DELETE FROM measurements WHERE user_id = ?').run(req.userId);
+    db.prepare('DELETE FROM plans WHERE user_id = ?').run(req.userId);
+    db.prepare('DELETE FROM profile WHERE user_id = ?').run(req.userId);
 
     if (data.profile && typeof data.profile === 'object') {
       const p = data.profile;
       db.prepare(`
-        INSERT INTO profile (id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim, updated_at)
-        VALUES (1, @nom, @age, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @lieu, @equipement, @contraintes, @preferences_alim, CURRENT_TIMESTAMP)
+        INSERT INTO profile (user_id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim)
+        VALUES (@user_id, @nom, @age, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @lieu, @equipement, @contraintes, @preferences_alim)
       `).run({
+        user_id: req.userId,
         nom: p.nom ?? null,
         age: p.age ?? null,
         sexe: p.sexe ?? null,
@@ -609,12 +792,12 @@ app.post('/api/import', (req, res) => {
     }
 
     const insMeasure = db.prepare(`
-      INSERT INTO measurements (id, date, poids_kg, pct_muscle, pct_graisse, tour_taille_cm, tour_hanches_cm, tour_bras_cm, tour_cuisse_cm, notes, created_at)
-      VALUES (@id, @date, @poids_kg, @pct_muscle, @pct_graisse, @tour_taille_cm, @tour_hanches_cm, @tour_bras_cm, @tour_cuisse_cm, @notes, COALESCE(@created_at, CURRENT_TIMESTAMP))
+      INSERT INTO measurements (user_id, date, poids_kg, pct_muscle, pct_graisse, tour_taille_cm, tour_hanches_cm, tour_bras_cm, tour_cuisse_cm, notes, created_at)
+      VALUES (@user_id, @date, @poids_kg, @pct_muscle, @pct_graisse, @tour_taille_cm, @tour_hanches_cm, @tour_bras_cm, @tour_cuisse_cm, @notes, COALESCE(@created_at, CURRENT_TIMESTAMP))
     `);
     for (const m of (data.measurements || [])) {
       insMeasure.run({
-        id: m.id ?? null,
+        user_id: req.userId,
         date: m.date,
         poids_kg: m.poids_kg ?? null,
         pct_muscle: m.pct_muscle ?? null,
@@ -628,13 +811,15 @@ app.post('/api/import', (req, res) => {
       });
     }
 
+    // Build a mapping of old workout_id -> new workout_id so exercises link correctly
+    const idMap = new Map();
     const insWorkout = db.prepare(`
-      INSERT INTO workouts (id, date, nom, duree_min, ressenti, notes, created_at)
-      VALUES (@id, @date, @nom, @duree_min, @ressenti, @notes, COALESCE(@created_at, CURRENT_TIMESTAMP))
+      INSERT INTO workouts (user_id, date, nom, duree_min, ressenti, notes, created_at)
+      VALUES (@user_id, @date, @nom, @duree_min, @ressenti, @notes, COALESCE(@created_at, CURRENT_TIMESTAMP))
     `);
     for (const w of (data.workouts || [])) {
-      insWorkout.run({
-        id: w.id ?? null,
+      const info = insWorkout.run({
+        user_id: req.userId,
         date: w.date,
         nom: w.nom ?? null,
         duree_min: w.duree_min ?? null,
@@ -642,16 +827,18 @@ app.post('/api/import', (req, res) => {
         notes: w.notes ?? null,
         created_at: w.created_at ?? null,
       });
+      if (w.id) idMap.set(w.id, info.lastInsertRowid);
     }
 
     const insExercise = db.prepare(`
-      INSERT INTO exercises (id, workout_id, nom, groupe_musculaire, type_equipement, series, repetitions, charge_kg, repos_sec, series_details, duree_min, distance_km, vitesse_kmh, inclinaison_pct, niveau_resistance, kcal_machine, notes)
-      VALUES (@id, @workout_id, @nom, @groupe_musculaire, @type_equipement, @series, @repetitions, @charge_kg, @repos_sec, @series_details, @duree_min, @distance_km, @vitesse_kmh, @inclinaison_pct, @niveau_resistance, @kcal_machine, @notes)
+      INSERT INTO exercises (workout_id, nom, groupe_musculaire, type_equipement, series, repetitions, charge_kg, repos_sec, series_details, duree_min, distance_km, vitesse_kmh, inclinaison_pct, niveau_resistance, kcal_machine, notes)
+      VALUES (@workout_id, @nom, @groupe_musculaire, @type_equipement, @series, @repetitions, @charge_kg, @repos_sec, @series_details, @duree_min, @distance_km, @vitesse_kmh, @inclinaison_pct, @niveau_resistance, @kcal_machine, @notes)
     `);
     for (const e of (data.exercises || [])) {
+      const newWorkoutId = idMap.get(e.workout_id);
+      if (!newWorkoutId) continue;
       insExercise.run({
-        id: e.id ?? null,
-        workout_id: e.workout_id,
+        workout_id: newWorkoutId,
         nom: e.nom ?? '',
         groupe_musculaire: e.groupe_musculaire ?? null,
         type_equipement: e.type_equipement ?? null,
@@ -671,12 +858,12 @@ app.post('/api/import', (req, res) => {
     }
 
     const insPlan = db.prepare(`
-      INSERT INTO plans (id, type, titre, contenu, created_at)
-      VALUES (@id, @type, @titre, @contenu, COALESCE(@created_at, CURRENT_TIMESTAMP))
+      INSERT INTO plans (user_id, type, titre, contenu, created_at)
+      VALUES (@user_id, @type, @titre, @contenu, COALESCE(@created_at, CURRENT_TIMESTAMP))
     `);
     for (const pl of (data.plans || [])) {
       insPlan.run({
-        id: pl.id ?? null,
+        user_id: req.userId,
         type: pl.type,
         titre: pl.titre ?? null,
         contenu: pl.contenu,
@@ -693,12 +880,13 @@ app.post('/api/import', (req, res) => {
   }
 });
 
+// ==================== Stats / Health ====================
 app.get('/api/stats', (req, res) => {
   res.json({
-    measurements: db.prepare('SELECT COUNT(*) as n FROM measurements').get().n,
-    workouts: db.prepare('SELECT COUNT(*) as n FROM workouts').get().n,
-    plans: db.prepare('SELECT COUNT(*) as n FROM plans').get().n,
-    has_profile: !!getProfile(),
+    measurements: db.prepare('SELECT COUNT(*) as n FROM measurements WHERE user_id = ?').get(req.userId).n,
+    workouts: db.prepare('SELECT COUNT(*) as n FROM workouts WHERE user_id = ?').get(req.userId).n,
+    plans: db.prepare('SELECT COUNT(*) as n FROM plans WHERE user_id = ?').get(req.userId).n,
+    has_profile: !!getProfile(req.userId),
   });
 });
 
@@ -710,8 +898,10 @@ app.get('/api/health', (req, res) => {
     anthropic_configured: !!anthropic,
     groq_configured: !!groq,
     model: provider === 'anthropic' ? ANTHROPIC_MODEL : provider === 'groq' ? GROQ_MODEL : null,
-    auth_required: !!APP_PASSWORD,
-    authenticated: isAuthenticated(req),
+    auth_required: true,
+    registration_enabled: !!INVITE_CODE,
+    authenticated: !!req.userId,
+    username: req.username || null,
   });
 });
 
@@ -722,5 +912,8 @@ app.listen(PORT, () => {
     console.log(`IA active : ${provider} (${provider === 'anthropic' ? ANTHROPIC_MODEL : GROQ_MODEL})`);
   } else {
     console.warn('Aucune clé API IA configurée — définissez GROQ_API_KEY (gratuit) ou ANTHROPIC_API_KEY.');
+  }
+  if (!INVITE_CODE) {
+    console.warn('ℹ️  INVITE_CODE non défini : aucune inscription possible. Définissez-le pour permettre l\'inscription de nouveaux utilisateurs.');
   }
 });

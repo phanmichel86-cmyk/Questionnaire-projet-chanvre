@@ -67,6 +67,8 @@ $$('.tab').forEach(btn => {
 });
 
 // --- HEALTH CHECK ---
+let currentUser = null;
+
 async function checkHealth() {
   try {
     const h = await api('/api/health');
@@ -77,18 +79,20 @@ async function checkHealth() {
     } else {
       banner.classList.add('hidden');
     }
-    // Auth status
-    const authStatus = $('#auth-status');
-    const sessionCard = $('#session-card');
-    if (authStatus && sessionCard) {
-      if (h.auth_required) {
-        authStatus.textContent = 'Vous êtes connecté. Le bouton ci-dessous vous déconnecte et exigera de retaper le mot de passe au prochain accès.';
-        sessionCard.classList.remove('hidden');
-      } else {
-        authStatus.textContent = 'Aucun mot de passe configuré sur cette instance. Pour activer la protection, définissez la variable d\'environnement APP_PASSWORD côté serveur.';
-        const btn = $('#logout-btn');
-        if (btn) btn.style.display = 'none';
+    if (h.authenticated && h.username) {
+      currentUser = h.username;
+      const chip = $('#user-chip');
+      const nameEl = $('#user-name');
+      if (chip && nameEl) {
+        nameEl.textContent = h.username;
+        chip.classList.remove('hidden');
       }
+    }
+    const authStatus = $('#auth-status');
+    if (authStatus) {
+      authStatus.textContent = h.username
+        ? `Connecté en tant que « ${h.username} ». Vos données sont totalement séparées des autres comptes. Le bouton de déconnexion vous fait sortir de la session ; cliquez à nouveau le mot de passe pour revenir.`
+        : '—';
     }
   } catch (e) { console.error(e); }
 }
@@ -799,9 +803,13 @@ $$('.filter').forEach(b => {
   });
 });
 
-// --- DATA BACKUP / RESTORE ---
-const BACKUP_KEY = 'coach-ia-backup-v1';
-const BACKUP_META_KEY = 'coach-ia-backup-meta-v1';
+// --- DATA BACKUP / RESTORE (per-user) ---
+function backupKey() {
+  return currentUser ? `coach-ia-backup-v2-${currentUser}` : 'coach-ia-backup-v2-anon';
+}
+function backupMetaKey() {
+  return currentUser ? `coach-ia-backup-meta-v2-${currentUser}` : 'coach-ia-backup-meta-v2-anon';
+}
 
 async function fetchSnapshot() {
   return api('/api/export');
@@ -810,20 +818,25 @@ async function fetchSnapshot() {
 async function saveLocalSnapshot() {
   try {
     const snap = await fetchSnapshot();
-    localStorage.setItem(BACKUP_KEY, JSON.stringify(snap));
-    localStorage.setItem(BACKUP_META_KEY, JSON.stringify({ at: new Date().toISOString() }));
+    localStorage.setItem(backupKey(), JSON.stringify(snap));
+    localStorage.setItem(backupMetaKey(), JSON.stringify({ at: new Date().toISOString(), username: currentUser }));
     updateBackupInfo();
   } catch (e) { console.warn('Snapshot failed:', e); }
 }
 
 function getLocalSnapshot() {
-  const raw = localStorage.getItem(BACKUP_KEY);
+  const raw = localStorage.getItem(backupKey());
   if (!raw) return null;
-  try { return JSON.parse(raw); } catch { return null; }
+  try {
+    const parsed = JSON.parse(raw);
+    // Safety: only restore snapshots that match the current username
+    if (parsed && parsed.username && currentUser && parsed.username !== currentUser) return null;
+    return parsed;
+  } catch { return null; }
 }
 
 function getLocalSnapshotMeta() {
-  const raw = localStorage.getItem(BACKUP_META_KEY);
+  const raw = localStorage.getItem(backupMetaKey());
   if (!raw) return null;
   try { return JSON.parse(raw); } catch { return null; }
 }
@@ -967,19 +980,36 @@ bind('restore-local-btn', async () => {
 
 bind('clear-local-btn', () => {
   if (!confirm('Effacer la copie locale ? Les données sur le serveur ne sont pas touchées.')) return;
-  localStorage.removeItem(BACKUP_KEY);
-  localStorage.removeItem(BACKUP_META_KEY);
+  localStorage.removeItem(backupKey());
+  localStorage.removeItem(backupMetaKey());
   updateBackupInfo();
   alert('Copie locale effacée.');
 });
 
-bind('logout-btn', async () => {
-  if (!confirm('Se déconnecter ? Vous devrez retaper le mot de passe au prochain accès.')) return;
+async function doLogout() {
+  if (!confirm('Se déconnecter ? Vous devrez retaper vos identifiants au prochain accès.')) return;
   try {
     await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
     window.location.href = '/login.html';
   } catch (err) { alert('Erreur : ' + err.message); }
-});
+}
+bind('logout-btn', doLogout);
+bind('logout-link', doLogout);
+
+const changePwForm = document.getElementById('change-password-form');
+if (changePwForm) {
+  changePwForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(changePwForm));
+    try {
+      await api('/api/change-password', { method: 'POST', body: data });
+      alert('✓ Mot de passe changé.');
+      changePwForm.reset();
+    } catch (err) {
+      alert('Erreur : ' + err.message);
+    }
+  });
+}
 
 // --- INIT ---
 (async function init() {

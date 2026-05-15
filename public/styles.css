@@ -386,6 +386,60 @@ tr:last-child td { border-bottom: none; }
   text-align: center;
 }
 
+.auth-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 1.5rem;
+  background: var(--surface);
+  padding: 0.3rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.auth-tab {
+  flex: 1;
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  padding: 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.auth-tab.active {
+  background: var(--accent);
+  color: white;
+}
+
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.user-chip-logout {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0 0.2rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+.user-chip-logout:hover { color: var(--danger); }
+
 .workout-card {
   background: var(--surface);
   border: 1px solid var(--border);
