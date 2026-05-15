@@ -456,6 +456,143 @@ ${JSON.stringify(ctx.workouts, null, 2)}
   }
 });
 
+// --- Export / Import ---
+app.get('/api/export', (req, res) => {
+  const profile = getProfile();
+  const measurements = db.prepare('SELECT * FROM measurements ORDER BY id ASC').all();
+  const workouts = db.prepare('SELECT * FROM workouts ORDER BY id ASC').all();
+  const exercises = db.prepare('SELECT * FROM exercises ORDER BY id ASC').all();
+  const plans = db.prepare('SELECT * FROM plans ORDER BY id ASC').all();
+  res.json({
+    version: 1,
+    exported_at: new Date().toISOString(),
+    profile,
+    measurements,
+    workouts,
+    exercises,
+    plans,
+  });
+});
+
+app.post('/api/import', (req, res) => {
+  const data = req.body || {};
+  if (!data || typeof data !== 'object') {
+    return res.status(400).json({ error: 'Format invalide' });
+  }
+
+  const tx = db.transaction(() => {
+    // Wipe — full replace semantics
+    db.prepare('DELETE FROM exercises').run();
+    db.prepare('DELETE FROM workouts').run();
+    db.prepare('DELETE FROM measurements').run();
+    db.prepare('DELETE FROM plans').run();
+    db.prepare('DELETE FROM profile').run();
+
+    if (data.profile && typeof data.profile === 'object') {
+      const p = data.profile;
+      db.prepare(`
+        INSERT INTO profile (id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim, updated_at)
+        VALUES (1, @nom, @age, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @lieu, @equipement, @contraintes, @preferences_alim, CURRENT_TIMESTAMP)
+      `).run({
+        nom: p.nom ?? null,
+        age: p.age ?? null,
+        sexe: p.sexe ?? null,
+        taille_cm: p.taille_cm ?? null,
+        niveau: p.niveau ?? null,
+        objectif: p.objectif ?? null,
+        frequence_hebdo: p.frequence_hebdo ?? null,
+        lieu: p.lieu ?? null,
+        equipement: p.equipement ?? null,
+        contraintes: p.contraintes ?? null,
+        preferences_alim: p.preferences_alim ?? null,
+      });
+    }
+
+    const insMeasure = db.prepare(`
+      INSERT INTO measurements (id, date, poids_kg, pct_muscle, pct_graisse, tour_taille_cm, tour_hanches_cm, tour_bras_cm, tour_cuisse_cm, notes, created_at)
+      VALUES (@id, @date, @poids_kg, @pct_muscle, @pct_graisse, @tour_taille_cm, @tour_hanches_cm, @tour_bras_cm, @tour_cuisse_cm, @notes, COALESCE(@created_at, CURRENT_TIMESTAMP))
+    `);
+    for (const m of (data.measurements || [])) {
+      insMeasure.run({
+        id: m.id ?? null,
+        date: m.date,
+        poids_kg: m.poids_kg ?? null,
+        pct_muscle: m.pct_muscle ?? null,
+        pct_graisse: m.pct_graisse ?? null,
+        tour_taille_cm: m.tour_taille_cm ?? null,
+        tour_hanches_cm: m.tour_hanches_cm ?? null,
+        tour_bras_cm: m.tour_bras_cm ?? null,
+        tour_cuisse_cm: m.tour_cuisse_cm ?? null,
+        notes: m.notes ?? null,
+        created_at: m.created_at ?? null,
+      });
+    }
+
+    const insWorkout = db.prepare(`
+      INSERT INTO workouts (id, date, nom, duree_min, ressenti, notes, created_at)
+      VALUES (@id, @date, @nom, @duree_min, @ressenti, @notes, COALESCE(@created_at, CURRENT_TIMESTAMP))
+    `);
+    for (const w of (data.workouts || [])) {
+      insWorkout.run({
+        id: w.id ?? null,
+        date: w.date,
+        nom: w.nom ?? null,
+        duree_min: w.duree_min ?? null,
+        ressenti: w.ressenti ?? null,
+        notes: w.notes ?? null,
+        created_at: w.created_at ?? null,
+      });
+    }
+
+    const insExercise = db.prepare(`
+      INSERT INTO exercises (id, workout_id, nom, series, repetitions, charge_kg, repos_sec, notes)
+      VALUES (@id, @workout_id, @nom, @series, @repetitions, @charge_kg, @repos_sec, @notes)
+    `);
+    for (const e of (data.exercises || [])) {
+      insExercise.run({
+        id: e.id ?? null,
+        workout_id: e.workout_id,
+        nom: e.nom ?? '',
+        series: e.series ?? null,
+        repetitions: e.repetitions ?? null,
+        charge_kg: e.charge_kg ?? null,
+        repos_sec: e.repos_sec ?? null,
+        notes: e.notes ?? null,
+      });
+    }
+
+    const insPlan = db.prepare(`
+      INSERT INTO plans (id, type, titre, contenu, created_at)
+      VALUES (@id, @type, @titre, @contenu, COALESCE(@created_at, CURRENT_TIMESTAMP))
+    `);
+    for (const pl of (data.plans || [])) {
+      insPlan.run({
+        id: pl.id ?? null,
+        type: pl.type,
+        titre: pl.titre ?? null,
+        contenu: pl.contenu,
+        created_at: pl.created_at ?? null,
+      });
+    }
+  });
+
+  try {
+    tx();
+    res.json({ ok: true, imported_at: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/stats', (req, res) => {
+  res.json({
+    measurements: db.prepare('SELECT COUNT(*) as n FROM measurements').get().n,
+    workouts: db.prepare('SELECT COUNT(*) as n FROM workouts').get().n,
+    plans: db.prepare('SELECT COUNT(*) as n FROM plans').get().n,
+    has_profile: !!getProfile(),
+  });
+});
+
 app.get('/api/health', (req, res) => {
   const provider = pickProvider();
   res.json({

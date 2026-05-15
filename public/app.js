@@ -9,6 +9,9 @@ function showLoader(text = 'Le coach réfléchit…') {
 }
 function hideLoader() { loader.classList.add('hidden'); }
 
+const NON_BACKED_UP = ['/api/import', '/api/export', '/api/stats', '/api/health',
+  '/api/generate-workout', '/api/generate-nutrition', '/api/coach-chat', '/api/progress-analysis'];
+
 async function api(path, opts = {}) {
   const res = await fetch(path, {
     headers: { 'Content-Type': 'application/json' },
@@ -19,7 +22,13 @@ async function api(path, opts = {}) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || `HTTP ${res.status}`);
   }
-  return res.json();
+  const result = await res.json();
+  // Auto-backup after any write that mutates user data
+  const method = (opts.method || 'GET').toUpperCase();
+  if (method !== 'GET' && !NON_BACKED_UP.some(p => path.startsWith(p))) {
+    saveLocalSnapshot().catch(() => {});
+  }
+  return result;
 }
 
 function num(v) {
@@ -48,6 +57,7 @@ $$('.tab').forEach(btn => {
     if (btn.dataset.tab === 'plans') loadPlans();
     if (btn.dataset.tab === 'mesures') loadMeasurements();
     if (btn.dataset.tab === 'entrainements') loadWorkouts();
+    if (btn.dataset.tab === 'donnees') { updateDataStats(); updateBackupInfo(); }
   });
 });
 
@@ -394,6 +404,94 @@ $$('.filter').forEach(b => {
   });
 });
 
+// --- DATA BACKUP / RESTORE ---
+const BACKUP_KEY = 'coach-ia-backup-v1';
+const BACKUP_META_KEY = 'coach-ia-backup-meta-v1';
+
+async function fetchSnapshot() {
+  return api('/api/export');
+}
+
+async function saveLocalSnapshot() {
+  try {
+    const snap = await fetchSnapshot();
+    localStorage.setItem(BACKUP_KEY, JSON.stringify(snap));
+    localStorage.setItem(BACKUP_META_KEY, JSON.stringify({ at: new Date().toISOString() }));
+    updateBackupInfo();
+  } catch (e) { console.warn('Snapshot failed:', e); }
+}
+
+function getLocalSnapshot() {
+  const raw = localStorage.getItem(BACKUP_KEY);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+function getLocalSnapshotMeta() {
+  const raw = localStorage.getItem(BACKUP_META_KEY);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+async function restoreFromLocal(silent = false) {
+  const snap = getLocalSnapshot();
+  if (!snap) {
+    if (!silent) alert('Aucune sauvegarde locale disponible.');
+    return false;
+  }
+  try {
+    await api('/api/import', { method: 'POST', body: snap });
+    if (!silent) alert('✓ Données restaurées depuis la copie locale.');
+    return true;
+  } catch (err) {
+    if (!silent) alert('Erreur lors de la restauration : ' + err.message);
+    return false;
+  }
+}
+
+async function autoRestoreIfNeeded() {
+  // If the server is empty but localStorage has data, restore silently.
+  try {
+    const stats = await api('/api/stats');
+    const serverEmpty = !stats.has_profile && stats.measurements === 0 && stats.workouts === 0 && stats.plans === 0;
+    const local = getLocalSnapshot();
+    const localHasData = local && (local.profile || (local.measurements?.length) || (local.workouts?.length) || (local.plans?.length));
+    if (serverEmpty && localHasData) {
+      console.info('Serveur vide + sauvegarde locale détectée → restauration automatique');
+      const ok = await restoreFromLocal(true);
+      if (ok) showRestoredToast();
+    }
+  } catch (e) { console.warn('autoRestoreIfNeeded:', e); }
+}
+
+function showRestoredToast() {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = '✓ Données restaurées automatiquement depuis la sauvegarde locale';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+}
+
+function updateBackupInfo() {
+  const el = $('#backup-info');
+  if (!el) return;
+  const meta = getLocalSnapshotMeta();
+  if (meta) {
+    el.textContent = `Dernière sauvegarde locale : ${new Date(meta.at).toLocaleString('fr-FR')}`;
+  } else {
+    el.textContent = 'Aucune sauvegarde locale enregistrée pour le moment.';
+  }
+}
+
+async function updateDataStats() {
+  const el = $('#data-stats');
+  if (!el) return;
+  try {
+    const s = await api('/api/stats');
+    el.textContent = `Profil : ${s.has_profile ? '✓' : '—'} · ${s.measurements} mesure(s) · ${s.workouts} séance(s) · ${s.plans} plan(s)`;
+  } catch (e) { el.textContent = 'Impossible de lire les statistiques.'; }
+}
+
 // --- PWA: service worker + install prompt ---
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -427,6 +525,59 @@ window.addEventListener('appinstalled', () => {
   installBtn.classList.add('hidden');
 });
 
+// --- DATA TAB BUTTONS ---
+function bind(id, handler) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', handler);
+}
+
+bind('export-btn', async () => {
+  try {
+    const snap = await fetchSnapshot();
+    const blob = new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `coach-ia-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) { alert('Erreur export : ' + err.message); }
+});
+
+bind('import-btn', async () => {
+  const file = $('#import-file').files[0];
+  if (!file) { alert('Sélectionnez un fichier .json à importer.'); return; }
+  if (!confirm('⚠️ L\'import remplace toutes les données actuelles. Continuer ?')) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    await api('/api/import', { method: 'POST', body: data });
+    alert('✓ Données importées avec succès.');
+    await loadProfile(); await loadMeasurements(); await loadWorkouts();
+    await saveLocalSnapshot();
+    await updateDataStats();
+  } catch (err) { alert('Erreur import : ' + err.message); }
+});
+
+bind('restore-local-btn', async () => {
+  if (!confirm('Restaurer les données depuis la sauvegarde locale ? Les données actuelles du serveur seront remplacées.')) return;
+  const ok = await restoreFromLocal(false);
+  if (ok) {
+    await loadProfile(); await loadMeasurements(); await loadWorkouts();
+    await updateDataStats();
+  }
+});
+
+bind('clear-local-btn', () => {
+  if (!confirm('Effacer la copie locale ? Les données sur le serveur ne sont pas touchées.')) return;
+  localStorage.removeItem(BACKUP_KEY);
+  localStorage.removeItem(BACKUP_META_KEY);
+  updateBackupInfo();
+  alert('Copie locale effacée.');
+});
+
 // --- INIT ---
 (async function init() {
   const today = new Date().toISOString().slice(0, 10);
@@ -435,7 +586,17 @@ window.addEventListener('appinstalled', () => {
   addExerciseRow();
 
   await checkHealth();
+  await autoRestoreIfNeeded();
   await loadProfile();
   await loadMeasurements();
   await loadWorkouts();
+  // Take an initial snapshot if server has data and we have no local backup
+  if (!getLocalSnapshot()) {
+    try {
+      const s = await api('/api/stats');
+      if (s.has_profile || s.measurements > 0 || s.workouts > 0) {
+        await saveLocalSnapshot();
+      }
+    } catch (_) {}
+  }
 })();

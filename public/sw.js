@@ -1,4 +1,4 @@
-const CACHE = 'coach-ia-v1';
+const CACHE = 'coach-ia-v2';
 const CORE = [
   '/',
   '/index.html',

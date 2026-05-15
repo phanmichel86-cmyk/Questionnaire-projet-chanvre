@@ -360,6 +360,21 @@ tr:last-child td { border-bottom: none; }
 .install-btn:hover { background: var(--primary-hover); }
 .install-btn.hidden { display: none; }
 
+.toast {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--success);
+  color: white;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  z-index: 1500;
+  font-weight: 500;
+  max-width: 90vw;
+}
+
 /* safe-area for iOS standalone mode */
 @supports (padding: env(safe-area-inset-bottom)) {
   body {

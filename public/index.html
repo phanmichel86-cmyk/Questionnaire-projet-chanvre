@@ -30,6 +30,7 @@
     <button class="tab" data-tab="progression">Progression</button>
     <button class="tab" data-tab="coach">Coach IA</button>
     <button class="tab" data-tab="plans">Plans</button>
+    <button class="tab" data-tab="donnees">Données</button>
   </nav>
 
   <main>
@@ -242,6 +243,40 @@
       </div>
 
       <div id="coach-output" class="markdown card hidden"></div>
+    </section>
+
+    <!-- DONNÉES -->
+    <section id="tab-donnees" class="tab-content">
+      <h2>Sauvegarde des données</h2>
+      <div class="card">
+        <h3>État</h3>
+        <p id="data-stats" class="hint">—</p>
+        <p id="backup-info" class="hint">—</p>
+      </div>
+
+      <div class="card">
+        <h3>📥 Exporter</h3>
+        <p class="hint">Télécharge un fichier JSON contenant toutes vos données (profil, mesures, séances, plans). À conserver en lieu sûr ou pour migrer vers un autre appareil.</p>
+        <button id="export-btn" class="primary">Télécharger la sauvegarde</button>
+      </div>
+
+      <div class="card">
+        <h3>📤 Importer</h3>
+        <p class="hint">⚠️ Remplace toutes les données actuelles par celles du fichier importé.</p>
+        <input type="file" id="import-file" accept="application/json" />
+        <div class="actions">
+          <button id="import-btn" class="primary">Restaurer depuis le fichier</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🔁 Sauvegarde locale automatique</h3>
+        <p class="hint">L'app garde en permanence une copie de vos données dans votre navigateur. Si le serveur redémarre vide (cas du free tier Render), la copie locale est restaurée automatiquement au prochain chargement.</p>
+        <div class="actions">
+          <button id="restore-local-btn" class="secondary">Restaurer maintenant depuis le navigateur</button>
+          <button id="clear-local-btn" class="danger">Effacer la copie locale</button>
+        </div>
+      </div>
     </section>
 
     <!-- PLANS -->
