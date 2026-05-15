@@ -3,6 +3,7 @@ import express from 'express';
 import Database from 'better-sqlite3';
 import Anthropic from '@anthropic-ai/sdk';
 import Groq from 'groq-sdk';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,7 +14,9 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-const db = new Database(path.join(__dirname, 'data', 'coach.db'));
+const dataDir = path.join(__dirname, 'data');
+fs.mkdirSync(dataDir, { recursive: true });
+const db = new Database(path.join(dataDir, 'coach.db'));
 db.pragma('journal_mode = WAL');
 
 db.exec(`

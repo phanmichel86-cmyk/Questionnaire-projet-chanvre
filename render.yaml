@@ -8,9 +8,7 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: GROQ_API_KEY
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
-    disk:
-      name: coach-data
-      mountPath: /opt/render/project/src/data
-      sizeGB: 1
