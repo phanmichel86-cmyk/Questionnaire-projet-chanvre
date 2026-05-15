@@ -15,9 +15,14 @@ const NON_BACKED_UP = ['/api/import', '/api/export', '/api/stats', '/api/health'
 async function api(path, opts = {}) {
   const res = await fetch(path, {
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
     ...opts,
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
+  if (res.status === 401) {
+    window.location.href = '/login.html';
+    throw new Error('auth_required');
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || `HTTP ${res.status}`);
@@ -71,6 +76,19 @@ async function checkHealth() {
       banner.classList.remove('hidden');
     } else {
       banner.classList.add('hidden');
+    }
+    // Auth status
+    const authStatus = $('#auth-status');
+    const sessionCard = $('#session-card');
+    if (authStatus && sessionCard) {
+      if (h.auth_required) {
+        authStatus.textContent = 'Vous êtes connecté. Le bouton ci-dessous vous déconnecte et exigera de retaper le mot de passe au prochain accès.';
+        sessionCard.classList.remove('hidden');
+      } else {
+        authStatus.textContent = 'Aucun mot de passe configuré sur cette instance. Pour activer la protection, définissez la variable d\'environnement APP_PASSWORD côté serveur.';
+        const btn = $('#logout-btn');
+        if (btn) btn.style.display = 'none';
+      }
     }
   } catch (e) { console.error(e); }
 }
@@ -189,22 +207,33 @@ function addExerciseCard(data = {}) {
         </label>
       </div>
 
-      <div class="variable-toggle-wrap">
+      <div class="variable-toggle-wrap exercise-musculation">
         <label class="checkbox-row">
           <input type="checkbox" class="variable-toggle" /> Charges variables par série (drop-set, pyramide…)
         </label>
       </div>
 
-      <div class="exercise-uniform">
+      <div class="exercise-uniform exercise-musculation">
         <label>Séries <input class="series" type="number" min="1" value="${data.series ?? ''}" /></label>
         <label>Reps <input class="reps" type="text" placeholder="10 ou 8-12" value="${data.repetitions ?? ''}" /></label>
         <label>Charge (kg) <input class="charge" type="number" step="0.5" value="${data.charge_kg ?? ''}" /></label>
         <label>Repos (s) <input class="repos" type="number" min="0" value="${data.repos_sec ?? ''}" /></label>
       </div>
 
-      <div class="exercise-variable hidden">
+      <div class="exercise-variable exercise-musculation hidden">
         <div class="series-detail-list"></div>
         <button type="button" class="secondary add-series-btn">+ Ajouter une série</button>
+      </div>
+
+      <div class="exercise-cardio hidden">
+        <div class="cardio-grid">
+          <label>Durée (min) <input class="cardio-duree" type="number" step="0.5" min="0" value="${data.duree_min ?? ''}" /></label>
+          <label>Distance (km) <input class="cardio-distance" type="number" step="0.01" min="0" value="${data.distance_km ?? ''}" /></label>
+          <label>Vitesse (km/h) <input class="cardio-vitesse" type="number" step="0.1" min="0" value="${data.vitesse_kmh ?? ''}" /></label>
+          <label>Inclinaison (%) <input class="cardio-inclinaison" type="number" step="0.5" value="${data.inclinaison_pct ?? ''}" /></label>
+          <label>Niveau résistance <input class="cardio-niveau" type="number" min="0" value="${data.niveau_resistance ?? ''}" /></label>
+          <label>kcal (machine) <input class="cardio-kcal" type="number" min="0" value="${data.kcal_machine ?? ''}" /></label>
+        </div>
       </div>
 
       <label class="exercise-notes">Notes
@@ -248,8 +277,17 @@ function addExerciseCard(data = {}) {
     nameDisplay.textContent = name;
   }
 
+  function refreshCardioMode() {
+    const isCardio = equipSel.value === 'cardio';
+    card.classList.toggle('is-cardio', isCardio);
+    card.querySelectorAll('.exercise-musculation').forEach(el => el.classList.toggle('hidden', isCardio));
+    card.querySelector('.exercise-cardio').classList.toggle('hidden', !isCardio);
+    // If switching to cardio, ensure the musculation variable section is collapsed
+    if (isCardio) variableToggle.checked = false;
+  }
+
   muscleSel.addEventListener('change', () => { refreshExerciseList(); updateSessionSummary(); });
-  equipSel.addEventListener('change', () => { refreshExerciseList(); updateSessionSummary(); });
+  equipSel.addEventListener('change', () => { refreshExerciseList(); refreshCardioMode(); updateSessionSummary(); });
   exerSel.addEventListener('change', () => {
     if (exerSel.value) customInput.value = '';
     updateName();
@@ -306,7 +344,7 @@ function addExerciseCard(data = {}) {
   });
 
   // Listen to all inputs that affect the summary
-  card.querySelectorAll('.series, .reps, .charge').forEach(i => i.addEventListener('input', updateSessionSummary));
+  card.querySelectorAll('.series, .reps, .charge, .cardio-duree, .cardio-kcal').forEach(i => i.addEventListener('input', updateSessionSummary));
 
   card.querySelector('[data-remove]').addEventListener('click', () => {
     card.remove();
@@ -322,6 +360,7 @@ function addExerciseCard(data = {}) {
   }
 
   if (data.groupe_musculaire || data.type_equipement) refreshExerciseList();
+  refreshCardioMode();
   updateName();
   updateSessionSummary();
 }
@@ -335,6 +374,24 @@ function readExerciseCard(card) {
   const groupe_musculaire = card.querySelector('.muscle-select').value || null;
   const type_equipement = card.querySelector('.equipment-select').value || null;
   const notes = card.querySelector('.notes').value || null;
+  const isCardio = type_equipement === 'cardio';
+
+  if (isCardio) {
+    return {
+      nom,
+      groupe_musculaire,
+      type_equipement,
+      series: null, repetitions: null, charge_kg: null, repos_sec: null, series_details: null,
+      duree_min: num(card.querySelector('.cardio-duree').value),
+      distance_km: num(card.querySelector('.cardio-distance').value),
+      vitesse_kmh: num(card.querySelector('.cardio-vitesse').value),
+      inclinaison_pct: num(card.querySelector('.cardio-inclinaison').value),
+      niveau_resistance: num(card.querySelector('.cardio-niveau').value),
+      kcal_machine: num(card.querySelector('.cardio-kcal').value),
+      notes,
+    };
+  }
+
   const variable = card.querySelector('.variable-toggle').checked;
 
   if (variable) {
@@ -375,11 +432,21 @@ function computeSessionStats() {
   let totalSeries = 0;
   let totalReps = 0;
   let tonnage = 0;
+  let cardioMin = 0;
+  let cardioKcalMachine = 0;
+  let cardioKm = 0;
 
   for (const card of cards) {
     const ex = readExerciseCard(card);
     if (!ex) continue;
     nbExercices++;
+
+    if (ex.type_equipement === 'cardio') {
+      cardioMin += ex.duree_min || 0;
+      cardioKcalMachine += ex.kcal_machine || 0;
+      cardioKm += ex.distance_km || 0;
+      continue;
+    }
 
     if (ex.series_details && ex.series_details.length) {
       for (const s of ex.series_details) {
@@ -389,7 +456,6 @@ function computeSessionStats() {
       }
     } else {
       const series = ex.series || 0;
-      // For "10-12" pick midpoint, for "10" pick 10
       let reps = 0;
       if (ex.repetitions) {
         const m = String(ex.repetitions).match(/(\d+)\s*(?:-\s*(\d+))?/);
@@ -403,7 +469,7 @@ function computeSessionStats() {
     }
   }
 
-  return { nbExercices, totalSeries, totalReps, tonnage };
+  return { nbExercices, totalSeries, totalReps, tonnage, cardioMin, cardioKcalMachine, cardioKm };
 }
 
 let cachedBodyweight = null;
@@ -442,24 +508,33 @@ async function updateSessionSummary() {
 
   const dureeInput = $('#workout-form [name=duree_min]');
   const ressentiInput = $('#workout-form [name=ressenti]');
-  const duree = dureeInput ? num(dureeInput.value) : null;
+  const dureeForm = dureeInput ? num(dureeInput.value) : null;
+  // Si l'utilisateur n'a pas saisi la durée globale, on prend la somme des durées cardio
+  const duree = dureeForm || (stats.cardioMin > 0 ? stats.cardioMin : null);
   const ressenti = ressentiInput ? num(ressentiInput.value) : null;
   const bw = await getBodyweight();
-  const kcal = estimateKcal(duree, ressenti, bw);
+  let kcalEstime = estimateKcal(duree, ressenti, bw);
+
+  // Si les machines cardio ont indiqué leur propre kcal, on les ajoute
+  const kcalTotal = (kcalEstime || 0) + Math.round(stats.cardioKcalMachine || 0);
 
   const kcalEl = $('#sum-kcal');
   const hintEl = $('#sum-hint');
-  if (kcal) {
-    const kj = Math.round(kcal * 4.184);
-    kcalEl.textContent = `${kcal} kcal (~${kj} kJ)`;
+  if (kcalTotal > 0) {
+    const kj = Math.round(kcalTotal * 4.184);
+    kcalEl.textContent = `${kcalTotal} kcal (~${kj} kJ)`;
     const bits = [];
-    bits.push(`durée ${duree} min`);
-    if (ressenti) bits.push(`ressenti ${ressenti}/10`);
-    bits.push(bw ? `poids ${bw} kg` : `poids supposé 75 kg`);
-    hintEl.textContent = 'Basé sur : ' + bits.join(' · ');
+    if (kcalEstime) {
+      bits.push(`estim. MET ${kcalEstime} kcal (durée ${duree} min, ${ressenti ? 'ressenti ' + ressenti + '/10, ' : ''}${bw ? 'poids ' + bw + ' kg' : 'poids supposé 75 kg'})`);
+    }
+    if (stats.cardioKcalMachine > 0) {
+      bits.push(`+ ${Math.round(stats.cardioKcalMachine)} kcal lus sur machine(s) cardio`);
+    }
+    if (stats.cardioKm > 0) bits.push(`distance cardio : ${stats.cardioKm.toFixed(2)} km`);
+    hintEl.textContent = bits.join(' · ');
   } else {
     kcalEl.textContent = '— kcal';
-    hintEl.textContent = 'Renseignez la durée de la séance pour estimer l\'énergie.';
+    hintEl.textContent = 'Renseignez la durée (ou la durée d\'un cardio) pour estimer l\'énergie.';
   }
 }
 
@@ -483,16 +558,25 @@ async function loadWorkouts() {
     card.className = 'workout-card';
     const pills = (w.exercises || []).map(e => {
       const parts = [e.nom];
-      let detail = null;
-      if (e.series_details) {
-        try { detail = typeof e.series_details === 'string' ? JSON.parse(e.series_details) : e.series_details; } catch {}
-      }
-      if (Array.isArray(detail) && detail.length) {
-        const seriesText = detail.map(s => `${s.reps ?? '?'}×${s.charge ?? '?'}kg`).join(' / ');
-        parts.push(seriesText);
+      if (e.type_equipement === 'cardio') {
+        if (e.duree_min) parts.push(`${e.duree_min} min`);
+        if (e.distance_km) parts.push(`${e.distance_km} km`);
+        if (e.vitesse_kmh) parts.push(`${e.vitesse_kmh} km/h`);
+        if (e.inclinaison_pct) parts.push(`incl. ${e.inclinaison_pct}%`);
+        if (e.niveau_resistance) parts.push(`niv. ${e.niveau_resistance}`);
+        if (e.kcal_machine) parts.push(`${e.kcal_machine} kcal`);
       } else {
-        if (e.series && e.repetitions) parts.push(`${e.series}×${e.repetitions}`);
-        if (e.charge_kg) parts.push(`${e.charge_kg}kg`);
+        let detail = null;
+        if (e.series_details) {
+          try { detail = typeof e.series_details === 'string' ? JSON.parse(e.series_details) : e.series_details; } catch {}
+        }
+        if (Array.isArray(detail) && detail.length) {
+          const seriesText = detail.map(s => `${s.reps ?? '?'}×${s.charge ?? '?'}kg`).join(' / ');
+          parts.push(seriesText);
+        } else {
+          if (e.series && e.repetitions) parts.push(`${e.series}×${e.repetitions}`);
+          if (e.charge_kg) parts.push(`${e.charge_kg}kg`);
+        }
       }
       return `<span class="exercise-pill">${parts.join(' ')}</span>`;
     }).join('');
@@ -887,6 +971,14 @@ bind('clear-local-btn', () => {
   localStorage.removeItem(BACKUP_META_KEY);
   updateBackupInfo();
   alert('Copie locale effacée.');
+});
+
+bind('logout-btn', async () => {
+  if (!confirm('Se déconnecter ? Vous devrez retaper le mot de passe au prochain accès.')) return;
+  try {
+    await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
+    window.location.href = '/login.html';
+  } catch (err) { alert('Erreur : ' + err.message); }
 });
 
 // --- INIT ---

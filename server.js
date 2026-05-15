@@ -3,6 +3,7 @@ import express from 'express';
 import Database from 'better-sqlite3';
 import Anthropic from '@anthropic-ai/sdk';
 import Groq from 'groq-sdk';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +13,81 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: '1mb' }));
+
+// ---- Authentication (simple shared password) ----
+const APP_PASSWORD = process.env.APP_PASSWORD || null;
+const SESSION_TTL_DAYS = parseInt(process.env.SESSION_TTL_DAYS || '365', 10);
+const COOKIE_NAME = 'coach_session';
+
+function sessionSecret() {
+  return crypto.createHash('sha256').update((APP_PASSWORD || '') + '|coach-ia-salt').digest();
+}
+function makeToken() {
+  return crypto.createHmac('sha256', sessionSecret()).update('logged_in_v1').digest('hex');
+}
+function parseCookies(header) {
+  const out = {};
+  if (!header) return out;
+  for (const part of header.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq === -1) continue;
+    out[part.slice(0, eq).trim()] = part.slice(eq + 1).trim();
+  }
+  return out;
+}
+function cookieHeader(name, value, opts = {}) {
+  const parts = [`${name}=${value}`, 'HttpOnly', 'Path=/', 'SameSite=Lax'];
+  if (process.env.NODE_ENV === 'production') parts.push('Secure');
+  if (opts.maxAgeSec) parts.push(`Max-Age=${opts.maxAgeSec}`);
+  return parts.join('; ');
+}
+function safeEq(a, b) {
+  const ab = Buffer.from(a || '');
+  const bb = Buffer.from(b || '');
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+function isAuthenticated(req) {
+  if (!APP_PASSWORD) return true;
+  const cookies = parseCookies(req.headers.cookie);
+  return safeEq(cookies[COOKIE_NAME] || '', makeToken());
+}
+
+const AUTH_PUBLIC_PATHS = new Set([
+  '/login.html',
+  '/styles.css',
+  '/icon.svg',
+  '/manifest.webmanifest',
+  '/favicon.ico',
+  '/sw.js',
+]);
+
+app.use((req, res, next) => {
+  if (isAuthenticated(req)) return next();
+  if (req.path === '/api/login' || req.path === '/api/health') return next();
+  if (AUTH_PUBLIC_PATHS.has(req.path)) return next();
+  if (req.path.startsWith('/api/')) {
+    return res.status(401).json({ error: 'auth_required' });
+  }
+  return res.redirect('/login.html');
+});
+
+app.post('/api/login', (req, res) => {
+  if (!APP_PASSWORD) return res.json({ ok: true, auth_required: false });
+  const { password, remember } = req.body || {};
+  if (!password || !safeEq(password, APP_PASSWORD)) {
+    return res.status(401).json({ error: 'Mot de passe incorrect' });
+  }
+  const maxAgeSec = remember === false ? undefined : SESSION_TTL_DAYS * 24 * 3600;
+  res.setHeader('Set-Cookie', cookieHeader(COOKIE_NAME, makeToken(), { maxAgeSec }));
+  res.json({ ok: true });
+});
+
+app.post('/api/logout', (req, res) => {
+  res.setHeader('Set-Cookie', cookieHeader(COOKIE_NAME, '', { maxAgeSec: 0 }));
+  res.json({ ok: true });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 const dataDir = path.join(__dirname, 'data');
@@ -83,6 +159,12 @@ try { db.exec('ALTER TABLE profile ADD COLUMN lieu TEXT'); } catch (_) { /* colu
 try { db.exec('ALTER TABLE exercises ADD COLUMN groupe_musculaire TEXT'); } catch (_) {}
 try { db.exec('ALTER TABLE exercises ADD COLUMN type_equipement TEXT'); } catch (_) {}
 try { db.exec('ALTER TABLE exercises ADD COLUMN series_details TEXT'); } catch (_) {}
+try { db.exec('ALTER TABLE exercises ADD COLUMN duree_min REAL'); } catch (_) {}
+try { db.exec('ALTER TABLE exercises ADD COLUMN distance_km REAL'); } catch (_) {}
+try { db.exec('ALTER TABLE exercises ADD COLUMN vitesse_kmh REAL'); } catch (_) {}
+try { db.exec('ALTER TABLE exercises ADD COLUMN inclinaison_pct REAL'); } catch (_) {}
+try { db.exec('ALTER TABLE exercises ADD COLUMN niveau_resistance INTEGER'); } catch (_) {}
+try { db.exec('ALTER TABLE exercises ADD COLUMN kcal_machine REAL'); } catch (_) {}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS plans (
@@ -215,8 +297,8 @@ app.post('/api/workouts', (req, res) => {
     });
     const workoutId = info.lastInsertRowid;
     const exStmt = db.prepare(`
-      INSERT INTO exercises (workout_id, nom, groupe_musculaire, type_equipement, series, repetitions, charge_kg, repos_sec, series_details, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO exercises (workout_id, nom, groupe_musculaire, type_equipement, series, repetitions, charge_kg, repos_sec, series_details, duree_min, distance_km, vitesse_kmh, inclinaison_pct, niveau_resistance, kcal_machine, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     for (const e of exercises) {
       exStmt.run(
@@ -229,6 +311,12 @@ app.post('/api/workouts', (req, res) => {
         e.charge_kg ?? null,
         e.repos_sec ?? null,
         e.series_details ? (typeof e.series_details === 'string' ? e.series_details : JSON.stringify(e.series_details)) : null,
+        e.duree_min ?? null,
+        e.distance_km ?? null,
+        e.vitesse_kmh ?? null,
+        e.inclinaison_pct ?? null,
+        e.niveau_resistance ?? null,
+        e.kcal_machine ?? null,
         e.notes ?? null,
       );
     }
@@ -557,8 +645,8 @@ app.post('/api/import', (req, res) => {
     }
 
     const insExercise = db.prepare(`
-      INSERT INTO exercises (id, workout_id, nom, groupe_musculaire, type_equipement, series, repetitions, charge_kg, repos_sec, series_details, notes)
-      VALUES (@id, @workout_id, @nom, @groupe_musculaire, @type_equipement, @series, @repetitions, @charge_kg, @repos_sec, @series_details, @notes)
+      INSERT INTO exercises (id, workout_id, nom, groupe_musculaire, type_equipement, series, repetitions, charge_kg, repos_sec, series_details, duree_min, distance_km, vitesse_kmh, inclinaison_pct, niveau_resistance, kcal_machine, notes)
+      VALUES (@id, @workout_id, @nom, @groupe_musculaire, @type_equipement, @series, @repetitions, @charge_kg, @repos_sec, @series_details, @duree_min, @distance_km, @vitesse_kmh, @inclinaison_pct, @niveau_resistance, @kcal_machine, @notes)
     `);
     for (const e of (data.exercises || [])) {
       insExercise.run({
@@ -572,6 +660,12 @@ app.post('/api/import', (req, res) => {
         charge_kg: e.charge_kg ?? null,
         repos_sec: e.repos_sec ?? null,
         series_details: e.series_details ?? null,
+        duree_min: e.duree_min ?? null,
+        distance_km: e.distance_km ?? null,
+        vitesse_kmh: e.vitesse_kmh ?? null,
+        inclinaison_pct: e.inclinaison_pct ?? null,
+        niveau_resistance: e.niveau_resistance ?? null,
+        kcal_machine: e.kcal_machine ?? null,
         notes: e.notes ?? null,
       });
     }
@@ -616,6 +710,8 @@ app.get('/api/health', (req, res) => {
     anthropic_configured: !!anthropic,
     groq_configured: !!groq,
     model: provider === 'anthropic' ? ANTHROPIC_MODEL : provider === 'groq' ? GROQ_MODEL : null,
+    auth_required: !!APP_PASSWORD,
+    authenticated: isAuthenticated(req),
   });
 });
 

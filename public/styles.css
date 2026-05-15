@@ -285,6 +285,24 @@ tr:last-child td { border-bottom: none; }
 .exercise-uniform.hidden { display: none; }
 
 .exercise-variable.hidden { display: none; }
+
+.exercise-cardio.hidden { display: none; }
+.cardio-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.6rem;
+  padding: 0.6rem;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+}
+.cardio-grid label { font-size: 0.8rem; }
+@media (max-width: 600px) {
+  .cardio-grid { grid-template-columns: 1fr 1fr; }
+}
+.exercise-card.is-cardio .exercise-card-header {
+  background: linear-gradient(90deg, var(--surface), rgba(47, 129, 247, 0.1));
+}
 .series-detail-list {
   display: flex;
   flex-direction: column;
@@ -345,6 +363,28 @@ tr:last-child td { border-bottom: none; }
   color: var(--text);
 }
 .hidden { display: none; }
+
+.login-container {
+  max-width: 380px;
+  margin: 4rem auto 0;
+  padding: 0 1rem;
+  text-align: center;
+}
+.login-container h1 { margin-bottom: 0.25rem; }
+.login-container .card {
+  text-align: left;
+  margin-top: 1.25rem;
+}
+.login-container button {
+  width: 100%;
+  margin-top: 1rem;
+}
+.login-error {
+  color: var(--danger);
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  text-align: center;
+}
 
 .workout-card {
   background: var(--surface);

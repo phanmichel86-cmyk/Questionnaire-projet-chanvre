@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Coach Sportif IA — Connexion</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="stylesheet" href="/styles.css">
+  <meta name="theme-color" content="#2f81f7">
+</head>
+<body>
+  <div class="login-container">
+    <h1>🏋️ Coach IA</h1>
+    <p class="subtitle">Connexion</p>
+    <form id="login-form" class="card">
+      <label>Mot de passe
+        <input name="password" type="password" autocomplete="current-password" autofocus required />
+      </label>
+      <label class="checkbox-row">
+        <input name="remember" type="checkbox" checked /> Se souvenir de moi (1 an)
+      </label>
+      <button type="submit" class="primary">Se connecter</button>
+      <p id="login-error" class="login-error hidden"></p>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = e.target.password.value;
+      const remember = e.target.remember.checked;
+      const errEl = document.getElementById('login-error');
+      errEl.classList.add('hidden');
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password, remember }),
+        });
+        if (res.ok) {
+          window.location.href = '/';
+        } else {
+          const err = await res.json().catch(() => ({}));
+          errEl.textContent = err.error || 'Erreur';
+          errEl.classList.remove('hidden');
+        }
+      } catch (err) {
+        errEl.textContent = 'Erreur réseau : ' + err.message;
+        errEl.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
