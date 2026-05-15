@@ -295,7 +295,12 @@ app.post('/api/register', (req, res) => {
   if (!INVITE_CODE) return res.status(403).json({ error: 'L\'inscription est désactivée sur cette instance. Demandez à l\'administrateur d\'activer un code d\'invitation.' });
   const { username, password, invite_code } = req.body || {};
   if (!username || !password || !invite_code) return res.status(400).json({ error: 'Tous les champs sont requis' });
-  if (!safeEq(String(invite_code), INVITE_CODE)) return res.status(403).json({ error: 'Code d\'invitation invalide' });
+  // Lenient compare for invite codes: trim + lowercase. Codes are for gating
+  // registration, not for protecting access — exact-match strictness only
+  // creates support issues (trailing space, capital letter, accent typo).
+  const normInput = String(invite_code).trim().toLowerCase();
+  const normExpected = String(INVITE_CODE).trim().toLowerCase();
+  if (!safeEq(normInput, normExpected)) return res.status(403).json({ error: 'Code d\'invitation invalide' });
   const clean = String(username).trim().toLowerCase();
   if (!/^[a-z0-9_\-]{2,32}$/.test(clean)) {
     return res.status(400).json({ error: 'Nom d\'utilisateur invalide (2-32 caractères, lettres minuscules, chiffres, _ ou -)' });
