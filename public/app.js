@@ -392,6 +392,39 @@ $$('.filter').forEach(b => {
   });
 });
 
+// --- PWA: service worker + install prompt ---
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW registration failed:', err));
+  });
+}
+
+let deferredInstall;
+const installBtn = document.createElement('button');
+installBtn.id = 'install-btn';
+installBtn.className = 'install-btn hidden';
+installBtn.textContent = '📲 Installer';
+installBtn.title = "Installer l'app sur l'écran d'accueil";
+document.body.appendChild(installBtn);
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstall = e;
+  installBtn.classList.remove('hidden');
+});
+
+installBtn.addEventListener('click', async () => {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  await deferredInstall.userChoice;
+  deferredInstall = null;
+  installBtn.classList.add('hidden');
+});
+
+window.addEventListener('appinstalled', () => {
+  installBtn.classList.add('hidden');
+});
+
 // --- INIT ---
 (async function init() {
   const today = new Date().toISOString().slice(0, 10);

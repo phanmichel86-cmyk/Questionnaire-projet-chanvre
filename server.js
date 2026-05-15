@@ -25,11 +25,15 @@ db.exec(`
     niveau TEXT,
     objectif TEXT,
     frequence_hebdo INTEGER,
+    lieu TEXT,
     equipement TEXT,
     contraintes TEXT,
     preferences_alim TEXT,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
+
+  -- Migration for existing DBs created before the lieu column
+  -- (SQLite ignores the ADD COLUMN if it would error; wrap in try/catch in JS)
 
   CREATE TABLE IF NOT EXISTS measurements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,7 +70,11 @@ db.exec(`
     notes TEXT,
     FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE
   );
+`);
 
+try { db.exec('ALTER TABLE profile ADD COLUMN lieu TEXT'); } catch (_) { /* column already exists */ }
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS plans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     type TEXT NOT NULL,
@@ -110,11 +118,11 @@ app.get('/api/profile', (req, res) => {
 app.post('/api/profile', (req, res) => {
   const p = req.body || {};
   db.prepare(`
-    INSERT INTO profile (id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, equipement, contraintes, preferences_alim, updated_at)
-    VALUES (1, @nom, @age, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @equipement, @contraintes, @preferences_alim, CURRENT_TIMESTAMP)
+    INSERT INTO profile (id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim, updated_at)
+    VALUES (1, @nom, @age, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @lieu, @equipement, @contraintes, @preferences_alim, CURRENT_TIMESTAMP)
     ON CONFLICT(id) DO UPDATE SET
       nom=@nom, age=@age, sexe=@sexe, taille_cm=@taille_cm, niveau=@niveau,
-      objectif=@objectif, frequence_hebdo=@frequence_hebdo, equipement=@equipement,
+      objectif=@objectif, frequence_hebdo=@frequence_hebdo, lieu=@lieu, equipement=@equipement,
       contraintes=@contraintes, preferences_alim=@preferences_alim,
       updated_at=CURRENT_TIMESTAMP
   `).run({
@@ -125,6 +133,7 @@ app.post('/api/profile', (req, res) => {
     niveau: p.niveau ?? null,
     objectif: p.objectif ?? null,
     frequence_hebdo: p.frequence_hebdo ?? null,
+    lieu: p.lieu ?? null,
     equipement: p.equipement ?? null,
     contraintes: p.contraintes ?? null,
     preferences_alim: p.preferences_alim ?? null,
@@ -246,11 +255,32 @@ async function callClaude(systemPrompt, userPrompt) {
   return textBlock?.text ?? '';
 }
 
+const ENVIRONMENT_NOTES = {
+  basic_fit: `L'utilisateur s'entraîne en salle Basic Fit. Équipement disponible :
+- Machines guidées Matrix (chest press, shoulder press, lat pulldown, vertical row / seated row, leg press, leg curl, leg extension, hip abduction/adduction, abdo crunch, hyperextension)
+- Poids libres : haltères jusqu'à ~40 kg, barres olympiques + disques, barres EZ, kettlebells
+- Bancs réglables, racks à squat / Smith machine, poulies vis-à-vis (functional trainer)
+- Cardio : tapis, vélos, rameurs, elliptiques
+Propose des exercices réellement exécutables sur cet équipement. Privilégie les machines Matrix quand pertinent pour la sécurité (débutants, charges lourdes en isolation), et les poids libres pour les mouvements polyarticulaires.`,
+  salle_complete: `Salle de sport complète : tout l'équipement standard est disponible.`,
+  maison_complet: `Entraînement à la maison avec banc, barre olympique, haltères et rack. Cible des exercices polyarticulaires aux poids libres.`,
+  maison_leger: `Entraînement à la maison avec seulement haltères et/ou élastiques. Évite les exercices qui exigent un rack ou des charges lourdes ; mise sur les tempos, les supersets et le volume.`,
+  poids_corps: `Entraînement au poids du corps uniquement. Pas de matériel. Mise sur les progressions (calisthénie), tempos lents, unilatéral, ploys.`,
+};
+
 const COACH_SYSTEM = `Tu es un coach sportif et nutritionniste expert, bienveillant et pédagogue.
 Tu personnalises chaque conseil en t'appuyant strictement sur les données fournies (profil, mesures, historique d'entraînement).
 Tu adaptes la difficulté à la progression et aux contraintes de l'utilisateur.
+Tu ne proposes que des exercices réellement exécutables avec l'équipement décrit dans le profil.
 Tu donnes des conseils sûrs : tu mentionnes les précautions, les échauffements, et tu rappelles qu'un avis médical est recommandé en cas de pathologie.
 Tu réponds en français, de manière structurée avec des titres en markdown.`;
+
+function environmentBlock(profile) {
+  if (!profile) return '';
+  const note = ENVIRONMENT_NOTES[profile.lieu];
+  if (!note) return '';
+  return `\n## Environnement d'entraînement\n${note}\n`;
+}
 
 app.post('/api/generate-workout', async (req, res) => {
   if (!requireAnthropic(res)) return;
@@ -264,7 +294,7 @@ app.post('/api/generate-workout', async (req, res) => {
 # Contexte
 ## Profil
 ${JSON.stringify(ctx.profile, null, 2)}
-
+${environmentBlock(ctx.profile)}
 ## Mesures récentes (chronologique inverse)
 ${JSON.stringify(ctx.measurements, null, 2)}
 
@@ -341,7 +371,7 @@ app.post('/api/coach-chat', async (req, res) => {
     const userPrompt = `# Contexte de l'utilisateur
 ## Profil
 ${JSON.stringify(ctx.profile, null, 2)}
-
+${environmentBlock(ctx.profile)}
 ## Mesures récentes
 ${JSON.stringify(ctx.measurements, null, 2)}
 
@@ -368,7 +398,7 @@ app.post('/api/progress-analysis', async (req, res) => {
 # Données
 ## Profil
 ${JSON.stringify(ctx.profile, null, 2)}
-
+${environmentBlock(ctx.profile)}
 ## Mesures (chronologique)
 ${JSON.stringify(ctx.measurements, null, 2)}
 

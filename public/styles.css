@@ -341,3 +341,31 @@ tr:last-child td { border-bottom: none; }
   padding: 1rem;
   text-align: center;
 }
+
+.install-btn {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  z-index: 500;
+  cursor: pointer;
+}
+.install-btn:hover { background: var(--primary-hover); }
+.install-btn.hidden { display: none; }
+
+/* safe-area for iOS standalone mode */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .install-btn {
+    bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
+}

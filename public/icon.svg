@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0f1419"/>
+  <circle cx="256" cy="256" r="180" fill="#1a2028" stroke="#2f81f7" stroke-width="8"/>
+  <g fill="#2f81f7" stroke="#2f81f7" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="120" y="232" width="40" height="48" rx="8"/>
+    <rect x="352" y="232" width="40" height="48" rx="8"/>
+    <rect x="160" y="216" width="32" height="80" rx="6"/>
+    <rect x="320" y="216" width="32" height="80" rx="6"/>
+    <rect x="192" y="244" width="128" height="24" rx="4"/>
+  </g>
+  <text x="256" y="430" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="48" font-weight="700" fill="#e6edf3">COACH IA</text>
+</svg>
