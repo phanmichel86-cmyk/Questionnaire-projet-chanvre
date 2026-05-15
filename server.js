@@ -323,6 +323,29 @@ app.get('/api/me', (req, res) => {
   res.json({ id: req.userId, username: req.username });
 });
 
+app.delete('/api/me', (req, res) => {
+  const { confirm_password } = req.body || {};
+  if (!confirm_password) return res.status(400).json({ error: 'Confirmation par mot de passe requise' });
+  const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.userId);
+  if (!row || !verifyPassword(confirm_password, row.password_hash)) {
+    return res.status(401).json({ error: 'Mot de passe incorrect' });
+  }
+  const tx = db.transaction(() => {
+    const myWorkoutIds = db.prepare('SELECT id FROM workouts WHERE user_id = ?').all(req.userId).map(r => r.id);
+    if (myWorkoutIds.length) {
+      db.prepare(`DELETE FROM exercises WHERE workout_id IN (${myWorkoutIds.map(() => '?').join(',')})`).run(...myWorkoutIds);
+    }
+    db.prepare('DELETE FROM workouts WHERE user_id = ?').run(req.userId);
+    db.prepare('DELETE FROM measurements WHERE user_id = ?').run(req.userId);
+    db.prepare('DELETE FROM plans WHERE user_id = ?').run(req.userId);
+    db.prepare('DELETE FROM profile WHERE user_id = ?').run(req.userId);
+    db.prepare('DELETE FROM users WHERE id = ?').run(req.userId);
+  });
+  tx();
+  res.setHeader('Set-Cookie', cookieHeader(COOKIE_NAME, '', { maxAgeSec: 0 }));
+  res.json({ ok: true });
+});
+
 app.post('/api/change-password', (req, res) => {
   const { current_password, new_password } = req.body || {};
   if (!current_password || !new_password) return res.status(400).json({ error: 'Champs requis' });

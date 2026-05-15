@@ -820,6 +820,10 @@ async function saveLocalSnapshot() {
     const snap = await fetchSnapshot();
     localStorage.setItem(backupKey(), JSON.stringify(snap));
     localStorage.setItem(backupMetaKey(), JSON.stringify({ at: new Date().toISOString(), username: currentUser }));
+    // Once a per-user (v2) snapshot exists, drop the legacy v1 blob so it
+    // can never bleed into a future account on this browser.
+    localStorage.removeItem('coach-ia-backup-v1');
+    localStorage.removeItem('coach-ia-backup-meta-v1');
     updateBackupInfo();
   } catch (e) { console.warn('Snapshot failed:', e); }
 }
@@ -836,12 +840,14 @@ function getLocalSnapshot() {
       }
     } catch {}
   }
-  // Legacy v1 backup (pre-multi-user) — can only have belonged to the
-  // original single user (now the admin). Use it once to recover data
-  // after a server wipe.
-  const legacy = localStorage.getItem('coach-ia-backup-v1');
-  if (legacy) {
-    try { return JSON.parse(legacy); } catch {}
+  // Legacy v1 backup (pre-multi-user) — restore ONLY for the admin account.
+  // The original single-user data could only have belonged to admin, so it
+  // must never auto-load into a freshly created account.
+  if (currentUser === 'admin') {
+    const legacy = localStorage.getItem('coach-ia-backup-v1');
+    if (legacy) {
+      try { return JSON.parse(legacy); } catch {}
+    }
   }
   return null;
 }
@@ -1006,6 +1012,33 @@ async function doLogout() {
 }
 bind('logout-btn', doLogout);
 bind('logout-link', doLogout);
+
+bind('delete-account-btn', async () => {
+  const who = currentUser || 'ce compte';
+  if (!confirm(`⚠️ Supprimer définitivement le compte « ${who} » et toutes ses données ?\n\nCette action est IRRÉVERSIBLE. Toutes les séances, mesures, plans IA et le profil seront effacés.`)) return;
+  const pw = prompt('Pour confirmer, tapez votre mot de passe :');
+  if (!pw) return;
+  try {
+    const res = await fetch('/api/me', {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm_password: pw }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert('Erreur : ' + (err.error || res.statusText));
+      return;
+    }
+    // Clear this account's local backup too
+    localStorage.removeItem(backupKey());
+    localStorage.removeItem(backupMetaKey());
+    alert('Compte supprimé.');
+    window.location.href = '/login.html';
+  } catch (err) {
+    alert('Erreur réseau : ' + err.message);
+  }
+});
 
 const changePwForm = document.getElementById('change-password-form');
 if (changePwForm) {
