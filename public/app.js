@@ -826,13 +826,24 @@ async function saveLocalSnapshot() {
 
 function getLocalSnapshot() {
   const raw = localStorage.getItem(backupKey());
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    // Safety: only restore snapshots that match the current username
-    if (parsed && parsed.username && currentUser && parsed.username !== currentUser) return null;
-    return parsed;
-  } catch { return null; }
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.username && currentUser && parsed.username !== currentUser) {
+        // v2 backup belongs to another user — refuse
+      } else {
+        return parsed;
+      }
+    } catch {}
+  }
+  // Legacy v1 backup (pre-multi-user) — can only have belonged to the
+  // original single user (now the admin). Use it once to recover data
+  // after a server wipe.
+  const legacy = localStorage.getItem('coach-ia-backup-v1');
+  if (legacy) {
+    try { return JSON.parse(legacy); } catch {}
+  }
+  return null;
 }
 
 function getLocalSnapshotMeta() {

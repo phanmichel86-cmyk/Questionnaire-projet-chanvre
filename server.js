@@ -219,33 +219,30 @@ function cookieHeader(name, value, opts = {}) {
   return parts.join('; ');
 }
 
-// One-time migration: if there are no users but there's existing data and an
-// APP_PASSWORD, create an admin account and assign all orphan rows to it.
-(function migrateLegacyData() {
+// One-time bootstrap: if no users exist yet and APP_PASSWORD is set, create
+// the admin account. Any orphan rows (from a legacy single-user DB) are
+// reassigned to it. Runs on every boot but only does work when the users
+// table is empty.
+(function bootstrapAdminUser() {
   const userCount = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
   if (userCount > 0) return;
 
-  const hasData =
-    db.prepare('SELECT COUNT(*) AS n FROM workouts').get().n > 0 ||
-    db.prepare('SELECT COUNT(*) AS n FROM measurements').get().n > 0 ||
-    db.prepare('SELECT COUNT(*) AS n FROM plans').get().n > 0 ||
-    db.prepare('SELECT COUNT(*) AS n FROM profile').get().n > 0;
-
-  if (!hasData) return;
-
   if (!APP_PASSWORD) {
-    console.warn('⚠️  Données existantes détectées, mais APP_PASSWORD non défini : migration multi-utilisateur reportée. Définissez APP_PASSWORD pour migrer vos données vers le compte admin.');
+    console.warn('⚠️  Aucun utilisateur et pas d\'APP_PASSWORD : le premier compte doit être créé via /api/register avec INVITE_CODE.');
     return;
   }
 
   const adminHash = hashPassword(APP_PASSWORD);
   const result = db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)').run(ADMIN_USERNAME, adminHash);
   const adminId = result.lastInsertRowid;
-  db.prepare('UPDATE profile SET user_id = ? WHERE user_id IS NULL').run(adminId);
-  db.prepare('UPDATE measurements SET user_id = ? WHERE user_id IS NULL').run(adminId);
-  db.prepare('UPDATE workouts SET user_id = ? WHERE user_id IS NULL').run(adminId);
-  db.prepare('UPDATE plans SET user_id = ? WHERE user_id IS NULL').run(adminId);
-  console.log(`✓ Migration multi-utilisateur : compte "${ADMIN_USERNAME}" créé (mot de passe = APP_PASSWORD), toutes les données existantes lui ont été assignées.`);
+
+  // Reassign any orphan data (covers DB upgrades from the single-user era)
+  const orphanCount =
+    db.prepare('UPDATE profile SET user_id = ? WHERE user_id IS NULL').run(adminId).changes +
+    db.prepare('UPDATE measurements SET user_id = ? WHERE user_id IS NULL').run(adminId).changes +
+    db.prepare('UPDATE workouts SET user_id = ? WHERE user_id IS NULL').run(adminId).changes +
+    db.prepare('UPDATE plans SET user_id = ? WHERE user_id IS NULL').run(adminId).changes;
+  console.log(`✓ Compte "${ADMIN_USERNAME}" créé (mot de passe = APP_PASSWORD).${orphanCount > 0 ? ` ${orphanCount} lignes existantes migrées.` : ''}`);
 })();
 
 // ==================== Auth middleware ====================
