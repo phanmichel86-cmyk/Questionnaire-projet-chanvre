@@ -14,6 +14,7 @@ window.GROUPES_MUSCULAIRES = [
   { id: 'adducteurs', label: 'Adducteurs / Abducteurs' },
   { id: 'abdos', label: 'Abdos / Core' },
   { id: 'cardio', label: 'Cardio' },
+  { id: 'sport_global', label: '🏆 Sport — corps entier' },
 ];
 
 window.TYPES_EQUIPEMENT = [
@@ -194,25 +195,25 @@ window.EXERCICES = [
   { groupes: ['cardio'], equipement: 'poids_corps', nom: 'Jumping jacks' },
   { groupes: ['cardio'], equipement: 'poids_corps', nom: 'High knees' },
 
-  // === SPORTS / ACTIVITÉS EXTÉRIEURES ===
+  // === SPORTS / ACTIVITÉS EXTÉRIEURES (corps entier) ===
   // Piscine
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Natation — libre' },
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Natation — crawl' },
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Natation — brasse' },
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Natation — dos crawlé' },
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Natation — papillon' },
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Aquagym' },
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Aquabike' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Natation — libre' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Natation — crawl' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Natation — brasse' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Natation — dos crawlé' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Natation — papillon' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Aquagym' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Aquabike' },
   // Vélo extérieur
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Vélo — route' },
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Vélo — VTT' },
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Vélo — ville / balade' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Vélo — route' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Vélo — VTT' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Vélo — ville / balade' },
   // Sports de raquette
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Badminton' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Badminton' },
   // Course / marche extérieure
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Course à pied (extérieur)' },
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Marche rapide' },
-  { groupes: ['cardio'], equipement: 'sport', nom: 'Randonnée' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Course à pied (extérieur)' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Marche rapide' },
+  { groupes: ['sport_global'], equipement: 'sport', nom: 'Randonnée' },
 ];
 
 // Index for fast lookups

@@ -609,7 +609,12 @@ Tu personnalises chaque conseil en t'appuyant strictement sur les données fourn
 Tu adaptes la difficulté à la progression et aux contraintes de l'utilisateur.
 Tu ne proposes que des exercices réellement exécutables avec l'équipement décrit dans le profil.
 Tu donnes des conseils sûrs : tu mentionnes les précautions, les échauffements, et tu rappelles qu'un avis médical est recommandé en cas de pathologie.
-Tu réponds en français, de manière structurée avec des titres en markdown.`;
+Tu réponds en français, de manière structurée avec des titres en markdown.
+
+Notes sur les données :
+- groupe_musculaire "cardio" = exercice cardio pur (tapis à allure modérée, vélo droit, rameur en endurance…)
+- groupe_musculaire "sport_global" = activité sportive sollicitant tout le corps (natation, vélo extérieur, badminton, randonnée…). Ces séances comptent comme entraînement complet, pas comme du simple cardio. Évalue les apports caloriques et la récupération en conséquence.
+- type_equipement "sport" = activité hors salle ; les champs durée/distance/vitesse sont remplis, mais pas séries/reps/charge.`;
 
 function environmentBlock(profile) {
   if (!profile) return '';
