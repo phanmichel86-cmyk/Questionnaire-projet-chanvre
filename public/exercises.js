@@ -22,6 +22,7 @@ window.TYPES_EQUIPEMENT = [
   { id: 'poids_libre', label: 'Poids libres (haltères, barre)' },
   { id: 'poids_corps', label: 'Poids du corps' },
   { id: 'cardio', label: 'Machine cardio' },
+  { id: 'sport', label: 'Sport / Activité (extérieur, piscine…)' },
 ];
 
 window.EXERCICES = [
@@ -192,6 +193,26 @@ window.EXERCICES = [
   { groupes: ['cardio'], equipement: 'poids_corps', nom: 'Burpees' },
   { groupes: ['cardio'], equipement: 'poids_corps', nom: 'Jumping jacks' },
   { groupes: ['cardio'], equipement: 'poids_corps', nom: 'High knees' },
+
+  // === SPORTS / ACTIVITÉS EXTÉRIEURES ===
+  // Piscine
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Natation — libre' },
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Natation — crawl' },
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Natation — brasse' },
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Natation — dos crawlé' },
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Natation — papillon' },
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Aquagym' },
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Aquabike' },
+  // Vélo extérieur
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Vélo — route' },
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Vélo — VTT' },
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Vélo — ville / balade' },
+  // Sports de raquette
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Badminton' },
+  // Course / marche extérieure
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Course à pied (extérieur)' },
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Marche rapide' },
+  { groupes: ['cardio'], equipement: 'sport', nom: 'Randonnée' },
 ];
 
 // Index for fast lookups

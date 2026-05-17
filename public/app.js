@@ -282,7 +282,7 @@ function addExerciseCard(data = {}) {
   }
 
   function refreshCardioMode() {
-    const isCardio = equipSel.value === 'cardio';
+    const isCardio = equipSel.value === 'cardio' || equipSel.value === 'sport';
     card.classList.toggle('is-cardio', isCardio);
     card.querySelectorAll('.exercise-musculation').forEach(el => el.classList.toggle('hidden', isCardio));
     card.querySelector('.exercise-cardio').classList.toggle('hidden', !isCardio);
@@ -378,7 +378,7 @@ function readExerciseCard(card) {
   const groupe_musculaire = card.querySelector('.muscle-select').value || null;
   const type_equipement = card.querySelector('.equipment-select').value || null;
   const notes = card.querySelector('.notes').value || null;
-  const isCardio = type_equipement === 'cardio';
+  const isCardio = type_equipement === 'cardio' || type_equipement === 'sport';
 
   if (isCardio) {
     return {
@@ -445,7 +445,7 @@ function computeSessionStats() {
     if (!ex) continue;
     nbExercices++;
 
-    if (ex.type_equipement === 'cardio') {
+    if (ex.type_equipement === 'cardio' || ex.type_equipement === 'sport') {
       cardioMin += ex.duree_min || 0;
       cardioKcalMachine += ex.kcal_machine || 0;
       cardioKm += ex.distance_km || 0;
@@ -562,7 +562,7 @@ async function loadWorkouts() {
     card.className = 'workout-card';
     const pills = (w.exercises || []).map(e => {
       const parts = [e.nom];
-      if (e.type_equipement === 'cardio') {
+      if (e.type_equipement === 'cardio' || e.type_equipement === 'sport') {
         if (e.duree_min) parts.push(`${e.duree_min} min`);
         if (e.distance_km) parts.push(`${e.distance_km} km`);
         if (e.vitesse_kmh) parts.push(`${e.vitesse_kmh} km/h`);
