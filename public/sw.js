@@ -1,4 +1,4 @@
-const CACHE = 'coach-ia-v8';
+const CACHE = 'coach-ia-v9';
 const CORE = [
   '/styles.css',
   '/icon.svg',

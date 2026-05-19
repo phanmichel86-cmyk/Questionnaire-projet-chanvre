@@ -65,7 +65,7 @@ window.EXERCICES = [
   { groupes: ['dos'], equipement: 'poids_corps', nom: 'Australian pull-ups' },
 
   // === ÉPAULES ===
-  { groupes: ['epaules'], equipement: 'machine_assistee', nom: 'Développé épaules machine' },
+  { groupes: ['epaules'], equipement: 'machine_assistee', nom: 'Développé épaules machine (shoulder press)' },
   { groupes: ['epaules'], equipement: 'machine_assistee', nom: 'Élévations latérales machine' },
   { groupes: ['epaules'], equipement: 'machine_assistee', nom: 'Reverse pec deck (épaules arrière)' },
   { groupes: ['epaules'], equipement: 'poulie', nom: 'Élévations latérales poulie' },
