@@ -542,7 +542,10 @@ async function updateSessionSummary() {
   }
 }
 
-$('#add-exercise').addEventListener('click', () => addExerciseCard());
+$('#add-exercise').addEventListener('click', () => {
+  addExerciseCard();
+  saveWorkoutDraft();
+});
 // Recompute on duree/ressenti change
 ['duree_min', 'ressenti'].forEach(name => {
   const el = document.querySelector(`#workout-form [name=${name}]`);
@@ -606,6 +609,120 @@ async function loadWorkouts() {
   });
 }
 
+// --- WORKOUT DRAFT AUTOSAVE ---
+// Mobile browsers often kill backgrounded tabs to reclaim RAM. Without
+// persistence, returning to the app after a context switch wipes the
+// in-progress workout form. We snapshot the form to localStorage on every
+// edit (debounced) and on visibility change, then restore on load.
+
+function workoutDraftKey() {
+  return `coach-ia-workout-draft-${currentUser || 'anon'}`;
+}
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+function serializeWorkoutForm() {
+  const form = $('#workout-form');
+  const exercises = $$('.exercise-card').map(readExerciseCard).filter(Boolean);
+  return {
+    date: form.date.value || null,
+    nom: form.nom.value || null,
+    duree_min: form.duree_min.value || null,
+    ressenti: form.ressenti.value || null,
+    notes: form.notes.value || null,
+    exercises,
+    _saved_at: new Date().toISOString(),
+  };
+}
+
+function isDraftEmpty(d) {
+  if (!d) return true;
+  if (Array.isArray(d.exercises) && d.exercises.length > 0) return false;
+  if (d.nom || d.duree_min || d.ressenti || d.notes) return false;
+  return true;
+}
+
+const _debouncedSaveDraft = debounce(_saveWorkoutDraftNow, 500);
+
+function _saveWorkoutDraftNow() {
+  if (!currentUser) return;
+  const d = serializeWorkoutForm();
+  try {
+    if (isDraftEmpty(d)) localStorage.removeItem(workoutDraftKey());
+    else localStorage.setItem(workoutDraftKey(), JSON.stringify(d));
+  } catch (e) { console.warn('draft save failed', e); }
+}
+
+function saveWorkoutDraft() { _debouncedSaveDraft(); }
+
+function clearWorkoutDraft() {
+  try { localStorage.removeItem(workoutDraftKey()); } catch {}
+}
+
+function restoreWorkoutDraft() {
+  if (!currentUser) return false;
+  let d;
+  try {
+    const raw = localStorage.getItem(workoutDraftKey());
+    if (!raw) return false;
+    d = JSON.parse(raw);
+  } catch { return false; }
+  if (isDraftEmpty(d)) return false;
+
+  const form = $('#workout-form');
+  if (d.date) form.date.value = d.date;
+  if (d.nom) form.nom.value = d.nom;
+  if (d.duree_min) form.duree_min.value = d.duree_min;
+  if (d.ressenti) form.ressenti.value = d.ressenti;
+  if (d.notes) form.notes.value = d.notes;
+
+  $('#exercises-list').innerHTML = '';
+  exerciseCounter = 0;
+  const exs = Array.isArray(d.exercises) ? d.exercises : [];
+  if (exs.length === 0) {
+    addExerciseCard();
+  } else {
+    for (const ex of exs) addExerciseCard(ex);
+  }
+  updateSessionSummary();
+
+  const banner = document.createElement('div');
+  banner.className = 'draft-banner';
+  const when = d._saved_at ? new Date(d._saved_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+  banner.innerHTML = `
+    📝 Brouillon restauré ${when ? `(sauvegardé ${when})` : ''}
+    <button type="button" class="draft-discard">Effacer le brouillon</button>
+  `;
+  banner.querySelector('.draft-discard').addEventListener('click', () => {
+    if (!confirm('Effacer le brouillon en cours et repartir d\'une séance vide ?')) return;
+    clearWorkoutDraft();
+    form.reset();
+    form.date.value = new Date().toISOString().slice(0, 10);
+    $('#exercises-list').innerHTML = '';
+    exerciseCounter = 0;
+    addExerciseCard();
+    updateSessionSummary();
+    banner.remove();
+  });
+  form.insertBefore(banner, form.firstChild);
+  setTimeout(() => banner.classList.add('fading'), 8000);
+  return true;
+}
+
+// Live save: any input bubbling up from the workout form
+$('#workout-form').addEventListener('input', saveWorkoutDraft);
+$('#workout-form').addEventListener('change', saveWorkoutDraft);
+
+// Save immediately when the tab is hidden (user switches app) — debounced
+// save might not have flushed yet.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') _saveWorkoutDraftNow();
+});
+window.addEventListener('pagehide', _saveWorkoutDraftNow);
+
 $('#workout-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form = e.target;
@@ -620,6 +737,7 @@ $('#workout-form').addEventListener('submit', async (e) => {
   };
   try {
     await api('/api/workouts', { method: 'POST', body: data });
+    clearWorkoutDraft();
     form.reset();
     form.date.value = new Date().toISOString().slice(0, 10);
     $('#exercises-list').innerHTML = '';
@@ -1060,13 +1178,17 @@ if (changePwForm) {
   const today = new Date().toISOString().slice(0, 10);
   $('#measure-form input[name=date]').value = today;
   $('#workout-form input[name=date]').value = today;
-  addExerciseCard();
 
   await checkHealth();
   await autoRestoreIfNeeded();
   await loadProfile();
   await loadMeasurements();
   await loadWorkouts();
+
+  // Now that currentUser is known, restore any in-progress workout draft.
+  // If none, start with a fresh empty exercise card as before.
+  const restored = restoreWorkoutDraft();
+  if (!restored) addExerciseCard();
   // Take an initial snapshot if server has data and we have no local backup
   if (!getLocalSnapshot()) {
     try {
