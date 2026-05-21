@@ -357,7 +357,21 @@ function addExerciseCard(data = {}) {
     });
   }
 
-  addSeriesBtn.addEventListener('click', () => addSeriesDetailRow());
+  addSeriesBtn.addEventListener('click', () => {
+    // Copy the last row's reps/charge so repeating the same series only
+    // takes one tap. The user can still edit if the new series differs.
+    const rows = seriesDetailList.children;
+    if (rows.length > 0) {
+      const last = rows[rows.length - 1];
+      addSeriesDetailRow({
+        reps: last.querySelector('.sd-reps').value,
+        charge: last.querySelector('.sd-charge').value,
+      });
+    } else {
+      addSeriesDetailRow();
+    }
+    saveWorkoutDraft();
+  });
 
   variableToggle.addEventListener('change', () => {
     if (variableToggle.checked) {
