@@ -16,6 +16,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@13.0.0/marked.min.js"></script>
   <script src="/exercises.js"></script>
+  <script src="/body-pict.js"></script>
 </head>
 <body>
   <header class="hero">
@@ -35,6 +36,7 @@
     <button class="tab" data-tab="mesures">Mesures</button>
     <button class="tab" data-tab="entrainements">Entraînements</button>
     <button class="tab" data-tab="progression">Progression</button>
+    <button class="tab" data-tab="carte">Carte muscles</button>
     <button class="tab" data-tab="coach">Coach IA</button>
     <button class="tab" data-tab="plans">Plans</button>
     <button class="tab" data-tab="donnees">Données</button>
@@ -254,6 +256,37 @@
         <button id="analyze-btn" class="primary">🧠 Analyser ma progression avec l'IA</button>
       </div>
       <div id="analysis-output" class="markdown card hidden"></div>
+    </section>
+
+    <!-- CARTE MUSCLES -->
+    <section id="tab-carte" class="tab-content">
+      <h2>Carte des muscles travaillés</h2>
+      <p class="hint">Synthèse visuelle des muscles sollicités. Les sports « corps entier » (natation, vélo, badminton…) répartissent leur charge sur les muscles qu'ils sollicitent typiquement.</p>
+
+      <div class="card">
+        <div class="actions" style="margin-bottom: 1rem">
+          <label>Période
+            <select id="carte-window">
+              <option value="7" selected>7 derniers jours</option>
+              <option value="14">14 derniers jours</option>
+              <option value="30">30 derniers jours</option>
+              <option value="9999">Tout l'historique</option>
+            </select>
+          </label>
+        </div>
+        <div id="body-map-svg" class="body-map-host"></div>
+
+        <div class="body-map-legend">
+          <span class="legend-item"><span class="legend-swatch level-0"></span> Non travaillé</span>
+          <span class="legend-item"><span class="legend-swatch level-1"></span> Léger (1-4)</span>
+          <span class="legend-item"><span class="legend-swatch level-2"></span> Modéré (5-9)</span>
+          <span class="legend-item"><span class="legend-swatch level-3"></span> Soutenu (10-19)</span>
+          <span class="legend-item"><span class="legend-swatch level-4"></span> Élevé (20+)</span>
+        </div>
+
+        <h4 style="margin-top:1.5rem">Détail par groupe</h4>
+        <div id="body-map-table"></div>
+      </div>
     </section>
 
     <!-- COACH -->

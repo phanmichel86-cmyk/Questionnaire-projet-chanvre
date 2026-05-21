@@ -62,6 +62,7 @@ $$('.tab').forEach(btn => {
     if (btn.dataset.tab === 'plans') loadPlans();
     if (btn.dataset.tab === 'mesures') loadMeasurements();
     if (btn.dataset.tab === 'entrainements') loadWorkouts();
+    if (btn.dataset.tab === 'carte') renderBodyMap();
     if (btn.dataset.tab === 'donnees') { updateDataStats(); updateBackupInfo(); }
   });
 });
@@ -231,6 +232,8 @@ function addExerciseCard(data = {}) {
         </label>
       </div>
 
+      <div class="exercise-pictogram"></div>
+
       <div class="variable-toggle-wrap exercise-musculation">
         <label class="checkbox-row">
           <input type="checkbox" class="variable-toggle" /> Charges variables par série (drop-set, pyramide…)
@@ -310,8 +313,15 @@ function addExerciseCard(data = {}) {
     if (isCardio) variableToggle.checked = false;
   }
 
-  muscleSel.addEventListener('change', () => { refreshExerciseList(); updateSessionSummary(); });
-  equipSel.addEventListener('change', () => { refreshExerciseList(); refreshCardioMode(); updateSessionSummary(); });
+  const pictEl = card.querySelector('.exercise-pictogram');
+  function refreshPictogram() {
+    if (!window.bodyPictogramSVG) return;
+    pictEl.innerHTML = window.bodyPictogramSVG({ highlight: muscleSel.value || null });
+  }
+  refreshPictogram();
+
+  muscleSel.addEventListener('change', () => { refreshExerciseList(); refreshPictogram(); updateSessionSummary(); });
+  equipSel.addEventListener('change', () => { refreshExerciseList(); refreshCardioMode(); refreshPictogram(); updateSessionSummary(); });
   exerSel.addEventListener('change', () => {
     if (exerSel.value) customInput.value = '';
     updateName();
@@ -768,6 +778,42 @@ $('#workout-form').addEventListener('submit', async (e) => {
     // Refresh cached bodyweight in case profile/measurements changed
     cachedBodyweight = null;
   } catch (err) { alert('Erreur : ' + err.message); }
+});
+
+// --- BODY MAP ---
+async function renderBodyMap() {
+  const days = parseInt($('#carte-window').value, 10) || 7;
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  let workouts;
+  try { workouts = await api('/api/workouts'); }
+  catch { return; }
+
+  const { intensity, counts } = window.muscleIntensityFromWorkouts(workouts, since);
+  $('#body-map-svg').innerHTML = window.bodyPictogramSVG({ intensity });
+
+  // Detail table
+  const groups = window.GROUPES_MUSCULAIRES;
+  const rows = groups.map(g => {
+    const count = counts[g.id] || 0;
+    const level = intensity[g.id] || 0;
+    return `<tr>
+      <td>${g.label}</td>
+      <td><span class="legend-swatch level-${level}"></span></td>
+      <td>${count > 0 ? count.toFixed(0) : '—'}</td>
+      <td>${['Non travaillé', 'Léger', 'Modéré', 'Soutenu', 'Élevé'][level]}</td>
+    </tr>`;
+  }).join('');
+  $('#body-map-table').innerHTML = `
+    <table class="body-map-detail">
+      <thead><tr><th>Groupe</th><th>Niveau</th><th>Volume</th><th>État</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+document.addEventListener('change', (e) => {
+  if (e.target && e.target.id === 'carte-window') renderBodyMap();
 });
 
 // --- CHARTS ---

@@ -468,6 +468,62 @@ tr:last-child td { border-bottom: none; }
 
 .asym-warn { cursor: help; }
 
+/* === Body pictogram === */
+.exercise-pictogram {
+  display: flex;
+  justify-content: center;
+  margin: 0.4rem 0 0.5rem;
+}
+.exercise-pictogram svg.body-pict {
+  width: 140px;
+  height: auto;
+  max-height: 110px;
+}
+
+.body-map-host {
+  display: flex;
+  justify-content: center;
+}
+.body-map-host svg.body-pict {
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+}
+
+.body-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.2rem;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.legend-item { display: inline-flex; align-items: center; gap: 0.4rem; }
+.legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.legend-swatch.level-0 { background: transparent; }
+.legend-swatch.level-1 { background: #facc15; opacity: 0.55; }
+.legend-swatch.level-2 { background: #fb923c; opacity: 0.75; }
+.legend-swatch.level-3 { background: #ef4444; opacity: 0.9; }
+.legend-swatch.level-4 { background: #b91c1c; }
+
+table.body-map-detail {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+table.body-map-detail th, table.body-map-detail td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+table.body-map-detail th { color: var(--text-dim); font-weight: 500; }
+
 .workout-card {
   background: var(--surface);
   border: 1px solid var(--border);
