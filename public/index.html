@@ -127,12 +127,34 @@
         <label>Tour de hanches (cm)
           <input name="tour_hanches_cm" type="number" step="0.1" />
         </label>
-        <label>Tour de bras (cm)
-          <input name="tour_bras_cm" type="number" step="0.1" />
+
+        <h4 class="span-3" style="margin: 0.5rem 0 0">Mensurations gauche / droite</h4>
+        <p class="hint span-3" style="margin: 0 0 0.5rem">Mesurez chaque côté séparément pour détecter un déséquilibre. Si vous ne mesurez qu'un côté, laissez l'autre vide.</p>
+
+        <label>Bras gauche (cm)
+          <input name="tour_bras_gauche_cm" type="number" step="0.1" />
         </label>
-        <label>Tour de cuisse (cm)
-          <input name="tour_cuisse_cm" type="number" step="0.1" />
+        <label>Bras droit (cm)
+          <input name="tour_bras_droit_cm" type="number" step="0.1" />
         </label>
+        <div></div>
+
+        <label>Cuisse gauche (cm)
+          <input name="tour_cuisse_gauche_cm" type="number" step="0.1" />
+        </label>
+        <label>Cuisse droite (cm)
+          <input name="tour_cuisse_droit_cm" type="number" step="0.1" />
+        </label>
+        <div></div>
+
+        <label>Mollet gauche (cm)
+          <input name="tour_mollet_gauche_cm" type="number" step="0.1" />
+        </label>
+        <label>Mollet droit (cm)
+          <input name="tour_mollet_droit_cm" type="number" step="0.1" />
+        </label>
+        <div></div>
+
         <label class="span-3">Notes
           <input name="notes" type="text" placeholder="Ex: à jeun, après cardio…" />
         </label>
@@ -147,7 +169,10 @@
           <thead>
             <tr>
               <th>Date</th><th>Poids</th><th>%Muscle</th><th>%Graisse</th>
-              <th>Taille</th><th>Hanches</th><th>Bras</th><th>Cuisse</th>
+              <th>Taille</th><th>Hanches</th>
+              <th title="Bras gauche / droit">Bras G/D</th>
+              <th title="Cuisse gauche / droite">Cuisse G/D</th>
+              <th title="Mollet gauche / droit">Mollet G/D</th>
               <th>Notes</th><th></th>
             </tr>
           </thead>
@@ -215,6 +240,11 @@
       <div class="card">
         <h3>Mensurations (tours en cm)</h3>
         <canvas id="chart-tours" height="120"></canvas>
+      </div>
+      <div class="card hidden" id="asymmetry-block">
+        <h3>⚖️ Déséquilibre gauche / droite</h3>
+        <p class="hint">Différence G − D en cm. Une valeur positive = gauche plus gros, négative = droit plus gros. Un écart &lt; 0.5 cm est normal ; au-delà de 1 cm, ça vaut le coup d'ajouter du travail unilatéral du côté faible.</p>
+        <canvas id="chart-asym" height="120"></canvas>
       </div>
       <div class="card">
         <h3>Volume d'entraînement</h3>

@@ -122,13 +122,27 @@ $('#profile-form').addEventListener('submit', async (e) => {
   } catch (err) { alert('Erreur : ' + err.message); }
 });
 
+// Format a "left / right" cell with a visual delta if both sides are filled.
+// Falls back to the legacy single value when no per-side data exists.
+function formatPair(g, d, legacy) {
+  const hasG = g != null;
+  const hasD = d != null;
+  if (!hasG && !hasD) return legacy != null ? `${legacy}` : '—';
+  if (hasG && hasD) {
+    const delta = Math.abs(g - d);
+    const tag = delta >= 1 ? ` <span class="asym-warn" title="Déséquilibre ${delta.toFixed(1)} cm">⚠️</span>` : '';
+    return `${g} / ${d}${tag}`;
+  }
+  return hasG ? `${g} / —` : `— / ${d}`;
+}
+
 // --- MEASUREMENTS ---
 async function loadMeasurements() {
   const list = await api('/api/measurements');
   const tbody = $('#measure-table tbody');
   tbody.innerHTML = '';
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="10" class="empty">Aucune mesure pour le moment.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" class="empty">Aucune mesure pour le moment.</td></tr>';
     return;
   }
   for (const m of [...list].reverse()) {
@@ -140,8 +154,9 @@ async function loadMeasurements() {
       <td>${m.pct_graisse ?? '—'}</td>
       <td>${m.tour_taille_cm ?? '—'}</td>
       <td>${m.tour_hanches_cm ?? '—'}</td>
-      <td>${m.tour_bras_cm ?? '—'}</td>
-      <td>${m.tour_cuisse_cm ?? '—'}</td>
+      <td>${formatPair(m.tour_bras_gauche_cm, m.tour_bras_droit_cm, m.tour_bras_cm)}</td>
+      <td>${formatPair(m.tour_cuisse_gauche_cm, m.tour_cuisse_droit_cm, m.tour_cuisse_cm)}</td>
+      <td>${formatPair(m.tour_mollet_gauche_cm, m.tour_mollet_droit_cm)}</td>
       <td>${m.notes ?? ''}</td>
       <td><button class="danger" data-del="${m.id}">Suppr.</button></td>
     `;
@@ -159,7 +174,12 @@ async function loadMeasurements() {
 $('#measure-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = formDataToObject(e.target);
-  for (const k of ['poids_kg', 'pct_muscle', 'pct_graisse', 'tour_taille_cm', 'tour_hanches_cm', 'tour_bras_cm', 'tour_cuisse_cm']) {
+  for (const k of [
+    'poids_kg', 'pct_muscle', 'pct_graisse', 'tour_taille_cm', 'tour_hanches_cm',
+    'tour_bras_gauche_cm', 'tour_bras_droit_cm',
+    'tour_cuisse_gauche_cm', 'tour_cuisse_droit_cm',
+    'tour_mollet_gauche_cm', 'tour_mollet_droit_cm',
+  ]) {
     data[k] = num(data[k]);
   }
   try {
@@ -751,7 +771,7 @@ $('#workout-form').addEventListener('submit', async (e) => {
 });
 
 // --- CHARTS ---
-let chartBody, chartTours, chartWorkouts;
+let chartBody, chartTours, chartAsym, chartWorkouts;
 
 async function renderCharts() {
   const measurements = await api('/api/measurements');
@@ -765,12 +785,40 @@ async function renderCharts() {
     { label: '% graisse', data: measurements.map(m => m.pct_graisse), borderColor: '#d29922', backgroundColor: 'transparent', spanGaps: true },
   ];
 
+  // For each side-aware tour, prefer the new G/D fields; fall back to the
+  // legacy single value if only that is set.
+  const brasG = measurements.map(m => m.tour_bras_gauche_cm ?? m.tour_bras_cm);
+  const brasD = measurements.map(m => m.tour_bras_droit_cm ?? m.tour_bras_cm);
+  const cuisseG = measurements.map(m => m.tour_cuisse_gauche_cm ?? m.tour_cuisse_cm);
+  const cuisseD = measurements.map(m => m.tour_cuisse_droit_cm ?? m.tour_cuisse_cm);
+  const molletG = measurements.map(m => m.tour_mollet_gauche_cm);
+  const molletD = measurements.map(m => m.tour_mollet_droit_cm);
+
   const dsTours = [
     { label: 'Taille', data: measurements.map(m => m.tour_taille_cm), borderColor: '#2f81f7', backgroundColor: 'transparent', spanGaps: true },
     { label: 'Hanches', data: measurements.map(m => m.tour_hanches_cm), borderColor: '#a371f7', backgroundColor: 'transparent', spanGaps: true },
-    { label: 'Bras', data: measurements.map(m => m.tour_bras_cm), borderColor: '#3fb950', backgroundColor: 'transparent', spanGaps: true },
-    { label: 'Cuisse', data: measurements.map(m => m.tour_cuisse_cm), borderColor: '#d29922', backgroundColor: 'transparent', spanGaps: true },
+    { label: 'Bras G', data: brasG, borderColor: '#3fb950', backgroundColor: 'transparent', spanGaps: true },
+    { label: 'Bras D', data: brasD, borderColor: '#3fb950', borderDash: [4, 4], backgroundColor: 'transparent', spanGaps: true },
+    { label: 'Cuisse G', data: cuisseG, borderColor: '#d29922', backgroundColor: 'transparent', spanGaps: true },
+    { label: 'Cuisse D', data: cuisseD, borderColor: '#d29922', borderDash: [4, 4], backgroundColor: 'transparent', spanGaps: true },
+    { label: 'Mollet G', data: molletG, borderColor: '#f85149', backgroundColor: 'transparent', spanGaps: true },
+    { label: 'Mollet D', data: molletD, borderColor: '#f85149', borderDash: [4, 4], backgroundColor: 'transparent', spanGaps: true },
   ];
+
+  // Asymmetry deltas (signed: G − D, in cm)
+  const deltaBras = measurements.map(m =>
+    (m.tour_bras_gauche_cm != null && m.tour_bras_droit_cm != null) ? (m.tour_bras_gauche_cm - m.tour_bras_droit_cm) : null);
+  const deltaCuisse = measurements.map(m =>
+    (m.tour_cuisse_gauche_cm != null && m.tour_cuisse_droit_cm != null) ? (m.tour_cuisse_gauche_cm - m.tour_cuisse_droit_cm) : null);
+  const deltaMollet = measurements.map(m =>
+    (m.tour_mollet_gauche_cm != null && m.tour_mollet_droit_cm != null) ? (m.tour_mollet_gauche_cm - m.tour_mollet_droit_cm) : null);
+  const dsAsym = [
+    { label: 'Bras G−D', data: deltaBras, borderColor: '#3fb950', backgroundColor: 'transparent', spanGaps: true },
+    { label: 'Cuisse G−D', data: deltaCuisse, borderColor: '#d29922', backgroundColor: 'transparent', spanGaps: true },
+    { label: 'Mollet G−D', data: deltaMollet, borderColor: '#f85149', backgroundColor: 'transparent', spanGaps: true },
+  ];
+  // Only render the asymmetry chart if there's at least one pair filled
+  const hasAnyAsym = [deltaBras, deltaCuisse, deltaMollet].some(arr => arr.some(v => v != null));
 
   const workoutDates = workouts.map(w => w.date).reverse();
   const workoutDuree = workouts.map(w => w.duree_min).reverse();
@@ -797,6 +845,23 @@ async function renderCharts() {
     data: { labels, datasets: dsTours },
     options: chartOpts,
   });
+
+  if (chartAsym) { chartAsym.destroy(); chartAsym = null; }
+  const asymBlock = $('#asymmetry-block');
+  if (asymBlock) asymBlock.classList.toggle('hidden', !hasAnyAsym);
+  if (hasAnyAsym) {
+    chartAsym = new Chart($('#chart-asym'), {
+      type: 'line',
+      data: { labels, datasets: dsAsym },
+      options: {
+        ...chartOpts,
+        plugins: {
+          ...chartOpts.plugins,
+          tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y > 0 ? '+' : ''}${c.parsed.y?.toFixed(1)} cm` } },
+        },
+      },
+    });
+  }
 
   if (chartWorkouts) chartWorkouts.destroy();
   chartWorkouts = new Chart($('#chart-workouts'), {

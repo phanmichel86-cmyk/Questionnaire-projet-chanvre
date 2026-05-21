@@ -466,6 +466,8 @@ tr:last-child td { border-bottom: none; }
 }
 .draft-banner .draft-discard:hover { color: var(--danger); border-color: var(--danger); }
 
+.asym-warn { cursor: help; }
+
 .workout-card {
   background: var(--surface);
   border: 1px solid var(--border);

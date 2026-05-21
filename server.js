@@ -98,6 +98,12 @@ for (const stmt of [
   'ALTER TABLE profile ADD COLUMN lieu TEXT',
   'ALTER TABLE profile ADD COLUMN user_id INTEGER',
   'ALTER TABLE measurements ADD COLUMN user_id INTEGER',
+  'ALTER TABLE measurements ADD COLUMN tour_bras_gauche_cm REAL',
+  'ALTER TABLE measurements ADD COLUMN tour_bras_droit_cm REAL',
+  'ALTER TABLE measurements ADD COLUMN tour_cuisse_gauche_cm REAL',
+  'ALTER TABLE measurements ADD COLUMN tour_cuisse_droit_cm REAL',
+  'ALTER TABLE measurements ADD COLUMN tour_mollet_gauche_cm REAL',
+  'ALTER TABLE measurements ADD COLUMN tour_mollet_droit_cm REAL',
   'ALTER TABLE workouts ADD COLUMN user_id INTEGER',
   'ALTER TABLE plans ADD COLUMN user_id INTEGER',
   'ALTER TABLE exercises ADD COLUMN groupe_musculaire TEXT',
@@ -112,6 +118,24 @@ for (const stmt of [
 ]) {
   try { db.exec(stmt); } catch (_) {}
 }
+
+// One-time backfill: existing single tour_bras_cm/tour_cuisse_cm values
+// were tracked before we split into left/right. Copy them into both sides
+// so old data appears as "symmetric" rather than empty in the new UI.
+db.exec(`
+  UPDATE measurements
+     SET tour_bras_gauche_cm = tour_bras_cm,
+         tour_bras_droit_cm  = tour_bras_cm
+   WHERE tour_bras_cm IS NOT NULL
+     AND tour_bras_gauche_cm IS NULL
+     AND tour_bras_droit_cm IS NULL;
+  UPDATE measurements
+     SET tour_cuisse_gauche_cm = tour_cuisse_cm,
+         tour_cuisse_droit_cm  = tour_cuisse_cm
+   WHERE tour_cuisse_cm IS NOT NULL
+     AND tour_cuisse_gauche_cm IS NULL
+     AND tour_cuisse_droit_cm IS NULL;
+`);
 
 // One-time migration: drop the "id = 1" CHECK constraint on profile so each
 // user can have their own row. Detect by inspecting the CREATE TABLE statement.
@@ -449,8 +473,16 @@ app.get('/api/measurements', (req, res) => {
 app.post('/api/measurements', (req, res) => {
   const m = req.body || {};
   const info = db.prepare(`
-    INSERT INTO measurements (user_id, date, poids_kg, pct_muscle, pct_graisse, tour_taille_cm, tour_hanches_cm, tour_bras_cm, tour_cuisse_cm, notes)
-    VALUES (@user_id, @date, @poids_kg, @pct_muscle, @pct_graisse, @tour_taille_cm, @tour_hanches_cm, @tour_bras_cm, @tour_cuisse_cm, @notes)
+    INSERT INTO measurements (user_id, date, poids_kg, pct_muscle, pct_graisse, tour_taille_cm, tour_hanches_cm,
+      tour_bras_gauche_cm, tour_bras_droit_cm,
+      tour_cuisse_gauche_cm, tour_cuisse_droit_cm,
+      tour_mollet_gauche_cm, tour_mollet_droit_cm,
+      notes)
+    VALUES (@user_id, @date, @poids_kg, @pct_muscle, @pct_graisse, @tour_taille_cm, @tour_hanches_cm,
+      @tour_bras_gauche_cm, @tour_bras_droit_cm,
+      @tour_cuisse_gauche_cm, @tour_cuisse_droit_cm,
+      @tour_mollet_gauche_cm, @tour_mollet_droit_cm,
+      @notes)
   `).run({
     user_id: req.userId,
     date: m.date || new Date().toISOString().slice(0, 10),
@@ -459,8 +491,12 @@ app.post('/api/measurements', (req, res) => {
     pct_graisse: m.pct_graisse ?? null,
     tour_taille_cm: m.tour_taille_cm ?? null,
     tour_hanches_cm: m.tour_hanches_cm ?? null,
-    tour_bras_cm: m.tour_bras_cm ?? null,
-    tour_cuisse_cm: m.tour_cuisse_cm ?? null,
+    tour_bras_gauche_cm: m.tour_bras_gauche_cm ?? null,
+    tour_bras_droit_cm: m.tour_bras_droit_cm ?? null,
+    tour_cuisse_gauche_cm: m.tour_cuisse_gauche_cm ?? null,
+    tour_cuisse_droit_cm: m.tour_cuisse_droit_cm ?? null,
+    tour_mollet_gauche_cm: m.tour_mollet_gauche_cm ?? null,
+    tour_mollet_droit_cm: m.tour_mollet_droit_cm ?? null,
     notes: m.notes ?? null,
   });
   res.json(db.prepare('SELECT * FROM measurements WHERE id = ? AND user_id = ?').get(info.lastInsertRowid, req.userId));
@@ -614,7 +650,8 @@ Tu réponds en français, de manière structurée avec des titres en markdown.
 Notes sur les données :
 - groupe_musculaire "cardio" = exercice cardio pur (tapis à allure modérée, vélo droit, rameur en endurance…)
 - groupe_musculaire "sport_global" = activité sportive sollicitant tout le corps (natation, vélo extérieur, badminton, randonnée…). Ces séances comptent comme entraînement complet, pas comme du simple cardio. Évalue les apports caloriques et la récupération en conséquence.
-- type_equipement "sport" = activité hors salle ; les champs durée/distance/vitesse sont remplis, mais pas séries/reps/charge.`;
+- type_equipement "sport" = activité hors salle ; les champs durée/distance/vitesse sont remplis, mais pas séries/reps/charge.
+- Les mensurations contiennent désormais tour_bras_gauche_cm / tour_bras_droit_cm, tour_cuisse_gauche_cm / tour_cuisse_droit_cm et tour_mollet_gauche_cm / tour_mollet_droit_cm. Un écart > 1 cm entre les côtés signale un déséquilibre à corriger via du travail unilatéral du côté faible. Les anciens champs tour_bras_cm et tour_cuisse_cm sont conservés pour la rétrocompatibilité ; privilégie les valeurs gauche/droite quand elles sont présentes.`;
 
 function environmentBlock(profile) {
   if (!profile) return '';
@@ -822,8 +859,18 @@ app.post('/api/import', (req, res) => {
     }
 
     const insMeasure = db.prepare(`
-      INSERT INTO measurements (user_id, date, poids_kg, pct_muscle, pct_graisse, tour_taille_cm, tour_hanches_cm, tour_bras_cm, tour_cuisse_cm, notes, created_at)
-      VALUES (@user_id, @date, @poids_kg, @pct_muscle, @pct_graisse, @tour_taille_cm, @tour_hanches_cm, @tour_bras_cm, @tour_cuisse_cm, @notes, COALESCE(@created_at, CURRENT_TIMESTAMP))
+      INSERT INTO measurements (user_id, date, poids_kg, pct_muscle, pct_graisse, tour_taille_cm, tour_hanches_cm,
+        tour_bras_cm, tour_cuisse_cm,
+        tour_bras_gauche_cm, tour_bras_droit_cm,
+        tour_cuisse_gauche_cm, tour_cuisse_droit_cm,
+        tour_mollet_gauche_cm, tour_mollet_droit_cm,
+        notes, created_at)
+      VALUES (@user_id, @date, @poids_kg, @pct_muscle, @pct_graisse, @tour_taille_cm, @tour_hanches_cm,
+        @tour_bras_cm, @tour_cuisse_cm,
+        @tour_bras_gauche_cm, @tour_bras_droit_cm,
+        @tour_cuisse_gauche_cm, @tour_cuisse_droit_cm,
+        @tour_mollet_gauche_cm, @tour_mollet_droit_cm,
+        @notes, COALESCE(@created_at, CURRENT_TIMESTAMP))
     `);
     for (const m of (data.measurements || [])) {
       insMeasure.run({
@@ -836,6 +883,12 @@ app.post('/api/import', (req, res) => {
         tour_hanches_cm: m.tour_hanches_cm ?? null,
         tour_bras_cm: m.tour_bras_cm ?? null,
         tour_cuisse_cm: m.tour_cuisse_cm ?? null,
+        tour_bras_gauche_cm: m.tour_bras_gauche_cm ?? null,
+        tour_bras_droit_cm: m.tour_bras_droit_cm ?? null,
+        tour_cuisse_gauche_cm: m.tour_cuisse_gauche_cm ?? null,
+        tour_cuisse_droit_cm: m.tour_cuisse_droit_cm ?? null,
+        tour_mollet_gauche_cm: m.tour_mollet_gauche_cm ?? null,
+        tour_mollet_droit_cm: m.tour_mollet_droit_cm ?? null,
         notes: m.notes ?? null,
         created_at: m.created_at ?? null,
       });
