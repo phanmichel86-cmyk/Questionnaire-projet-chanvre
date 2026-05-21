@@ -1,4 +1,4 @@
-const CACHE = 'coach-ia-v12';
+const CACHE = 'coach-ia-v13';
 const CORE = [
   '/styles.css',
   '/icon.svg',
@@ -52,7 +52,25 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Cache-first for static assets
+  // Network-first for our own JS so updates land immediately instead of
+  // being shadowed by a stale cached version after a redeploy.
+  const isOwnJS = url.origin === self.location.origin && url.pathname.endsWith('.js');
+  if (isOwnJS) {
+    e.respondWith(
+      fetch(e.request)
+        .then((resp) => {
+          if (resp.ok) {
+            const copy = resp.clone();
+            caches.open(CACHE).then((c) => c.put(e.request, copy));
+          }
+          return resp;
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Cache-first for everything else (CSS, images, CDN libs)
   e.respondWith(
     caches.match(e.request).then((cached) =>
       cached || fetch(e.request).then((resp) => {
