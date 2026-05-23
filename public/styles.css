@@ -531,6 +531,131 @@ tr:last-child td { border-bottom: none; }
   font-weight: 700;
 }
 
+/* === Per-set progress buttons === */
+.sets-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0.4rem;
+}
+.sets-progress.hidden { display: none; }
+.set-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.set-btn:hover { border-color: var(--accent); color: var(--text); }
+.set-btn.done {
+  background: #3fb950;
+  border-color: #3fb950;
+  color: white;
+}
+
+/* === Rest timer === */
+.rest-timer {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: white;
+  padding: 0.8rem 1.2rem;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 180px;
+  transition: background 0.3s;
+}
+.rest-timer.hidden { display: none; }
+.rest-timer.done {
+  background: #3fb950;
+  animation: pulse 0.5s ease-in-out 2;
+}
+@keyframes pulse {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.06); }
+}
+.rest-label { font-size: 0.75rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.05em; }
+.rest-time { font-size: 2.4rem; font-weight: 800; line-height: 1; }
+.rest-controls { display: flex; gap: 0.3rem; }
+.rest-controls button {
+  background: rgba(255,255,255,0.18);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.rest-controls button:hover { background: rgba(255,255,255,0.3); }
+
+/* === Quick-start "refaire la dernière séance" === */
+.quick-start {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.quick-start.hidden { display: none; }
+
+/* === Workout history extra buttons === */
+.workout-card-actions {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+/* === Exercise records (Mes records) === */
+.ex-record {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 0.4rem 0;
+  background: var(--surface);
+}
+.ex-record summary {
+  padding: 0.7rem 0.9rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  font-size: 0.92rem;
+}
+.ex-record summary::-webkit-details-marker { display: none; }
+.ex-record-name { font-weight: 600; }
+.ex-record-summary { color: var(--text-dim); font-size: 0.86rem; }
+.ex-record-detail { padding: 0 0.9rem 0.7rem; }
+.ex-record-detail table { width: 100%; font-size: 0.85rem; border-collapse: collapse; }
+.ex-record-detail th, .ex-record-detail td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--border); }
+.ex-record-detail th { color: var(--text-dim); font-weight: 500; }
+.pr-badge {
+  background: rgba(63, 185, 80, 0.18);
+  color: #3fb950;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 0.3rem;
+}
+
 /* === Body pictogram === */
 .exercise-pictogram {
   display: flex;

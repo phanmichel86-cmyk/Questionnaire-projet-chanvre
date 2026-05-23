@@ -502,7 +502,65 @@ function buildContextSummary(userId) {
   const lastWeight = measurements.find(m => m.poids_kg != null)?.poids_kg;
   const energy = computeEnergyProfile({ profile, lastWeightKg: lastWeight });
 
-  return { profile, measurements, workouts, energy };
+  // Per-exercise records: lets the LLM propose load progression
+  // ("la dernière fois 70 × 8, tente 72.5 × 8") without us spelling it out.
+  const records = computeExerciseRecordsServer(getAllWorkouts(userId));
+
+  return { profile, measurements, workouts, energy, exercise_records: records };
+}
+
+function getAllWorkouts(userId) {
+  const workouts = db.prepare('SELECT * FROM workouts WHERE user_id = ? ORDER BY date ASC, id ASC').all(userId);
+  const exStmt = db.prepare('SELECT * FROM exercises WHERE workout_id = ?');
+  return workouts.map(w => ({ ...w, exercises: exStmt.all(w.id) }));
+}
+
+// Server-side mirror of computeExerciseRecords in the browser.
+// Returns a compact per-exercise summary suitable for inclusion in LLM prompts.
+function computeExerciseRecordsServer(workouts) {
+  const byName = new Map();
+  for (const w of workouts) {
+    for (const ex of (w.exercises || [])) {
+      const rawName = (ex.nom || '').trim();
+      if (!rawName) continue;
+      const key = rawName.toLowerCase();
+      if (!byName.has(key)) byName.set(key, { nom: rawName, sessions: [] });
+      const entry = byName.get(key);
+      let bestCharge = null, bestReps = null;
+      let sd = null;
+      if (ex.series_details) {
+        try { sd = typeof ex.series_details === 'string' ? JSON.parse(ex.series_details) : ex.series_details; } catch {}
+      }
+      if (Array.isArray(sd) && sd.length) {
+        for (const s of sd) {
+          if (s.charge != null && (bestCharge == null || s.charge > bestCharge)) {
+            bestCharge = s.charge; bestReps = s.reps ?? null;
+          }
+        }
+      } else if (ex.charge_kg != null && ex.repetitions) {
+        bestCharge = ex.charge_kg;
+        const m = String(ex.repetitions).match(/(\d+)(?:\s*-\s*(\d+))?/);
+        bestReps = m ? (m[2] ? Math.round((parseInt(m[1], 10) + parseInt(m[2], 10)) / 2) : parseInt(m[1], 10)) : null;
+      }
+      entry.sessions.push({ date: w.date, bestCharge, bestReps });
+    }
+  }
+  const out = [];
+  for (const e of byName.values()) {
+    e.sessions.sort((a, b) => a.date.localeCompare(b.date));
+    const last = e.sessions[e.sessions.length - 1];
+    const max = e.sessions.reduce((m, s) => (s.bestCharge != null && s.bestCharge > m ? s.bestCharge : m), 0);
+    out.push({
+      nom: e.nom,
+      nb_sessions: e.sessions.length,
+      record_charge_kg: max || null,
+      derniere: last ? { date: last.date, charge_kg: last.bestCharge, reps: last.bestReps } : null,
+    });
+  }
+  // Keep only exercises trained at least twice (otherwise no progression data)
+  return out.filter(e => e.nb_sessions >= 2).sort((a, b) =>
+    (b.derniere?.date || '').localeCompare(a.derniere?.date || '')
+  ).slice(0, 30);
 }
 
 // ==================== Profile ====================
@@ -665,6 +723,19 @@ app.delete('/api/plans/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// Save a workout as a reusable template (kept inside the plans table with
+// type='template'; the contenu column holds a JSON {exercises:[...]}).
+app.post('/api/templates', (req, res) => {
+  const { titre, exercises } = req.body || {};
+  if (!titre || !Array.isArray(exercises) || !exercises.length) {
+    return res.status(400).json({ error: 'titre + exercises requis' });
+  }
+  const info = db.prepare(
+    'INSERT INTO plans (user_id, type, titre, contenu) VALUES (?, ?, ?, ?)'
+  ).run(req.userId, 'template', titre, JSON.stringify({ exercises }));
+  res.json({ id: info.lastInsertRowid, titre });
+});
+
 // ==================== AI ====================
 function requireLLM(res) {
   if (!pickProvider()) {
@@ -752,6 +823,14 @@ function environmentBlock(profile) {
   return `\n## Environnement d'entraînement\n${note}\n`;
 }
 
+function recordsBlock(records) {
+  if (!records || !records.length) return '';
+  const lines = records.map(r =>
+    `- ${r.nom} : ${r.nb_sessions} séances, record ${r.record_charge_kg ?? '?'} kg, dernière fois ${r.derniere?.charge_kg ?? '?'} kg × ${r.derniere?.reps ?? '?'} reps (${r.derniere?.date})`
+  ).join('\n');
+  return `\n## Records par exercice (utilise pour proposer des progressions de charge)\n${lines}\n`;
+}
+
 function energyBlock(energy) {
   if (!energy || !energy.ready) return '';
   return `\n## Profil énergétique calculé (Mifflin-St Jeor + activité + objectif)
@@ -782,6 +861,7 @@ app.post('/api/generate-workout', async (req, res) => {
 ${JSON.stringify(ctx.profile, null, 2)}
 ${environmentBlock(ctx.profile)}
 ${energyBlock(ctx.energy)}
+${recordsBlock(ctx.exercise_records)}
 ## Mesures récentes (chronologique inverse)
 ${JSON.stringify(ctx.measurements, null, 2)}
 
@@ -902,6 +982,7 @@ app.post('/api/coach-chat', async (req, res) => {
 ${JSON.stringify(ctx.profile, null, 2)}
 ${environmentBlock(ctx.profile)}
 ${energyBlock(ctx.energy)}
+${recordsBlock(ctx.exercise_records)}
 ## Mesures récentes
 ${JSON.stringify(ctx.measurements, null, 2)}
 
@@ -930,6 +1011,7 @@ app.post('/api/progress-analysis', async (req, res) => {
 ${JSON.stringify(ctx.profile, null, 2)}
 ${environmentBlock(ctx.profile)}
 ${energyBlock(ctx.energy)}
+${recordsBlock(ctx.exercise_records)}
 ## Mesures (chronologique)
 ${JSON.stringify(ctx.measurements, null, 2)}
 

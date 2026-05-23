@@ -58,7 +58,7 @@ $$('.tab').forEach(btn => {
     $$('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     $(`#tab-${btn.dataset.tab}`).classList.add('active');
-    if (btn.dataset.tab === 'progression') renderCharts();
+    if (btn.dataset.tab === 'progression') { renderCharts(); renderExerciseRecords(); }
     if (btn.dataset.tab === 'plans') loadPlans();
     if (btn.dataset.tab === 'mesures') loadMeasurements();
     if (btn.dataset.tab === 'entrainements') loadWorkouts();
@@ -361,6 +361,7 @@ function addExerciseCard(data = {}) {
         <label>Charge (kg) <input class="charge" type="number" step="0.5" value="${data.charge_kg ?? ''}" /></label>
         <label>Repos (s) <input class="repos" type="number" min="0" value="${data.repos_sec ?? ''}" /></label>
       </div>
+      <div class="sets-progress exercise-musculation" title="Cliquer après chaque série pour démarrer le repos"></div>
 
       <div class="exercise-variable exercise-musculation hidden">
         <div class="series-detail-list"></div>
@@ -533,6 +534,7 @@ function addExerciseCard(data = {}) {
 
   if (data.groupe_musculaire || data.type_equipement) refreshExerciseList();
   refreshCardioMode();
+  setupSetsProgress(card);
   updateName();
   updateSessionSummary();
 }
@@ -740,6 +742,23 @@ async function loadWorkouts() {
   const list = await api('/api/workouts');
   const div = $('#workouts-list');
   div.innerHTML = '';
+
+  // Quick-start: "🔁 Refaire la dernière séance"
+  const quickStart = $('#quick-start');
+  if (quickStart) {
+    if (list.length) {
+      const last = list[0];
+      quickStart.classList.remove('hidden');
+      quickStart.innerHTML = `
+        <span>Dernière séance : <strong>${last.nom ?? 'Séance'}</strong> · ${last.date}</span>
+        <button class="primary" id="redo-last-btn">🔁 Refaire</button>
+      `;
+      $('#redo-last-btn').addEventListener('click', () => redoWorkout(last));
+    } else {
+      quickStart.classList.add('hidden');
+    }
+  }
+
   if (!list.length) {
     div.innerHTML = '<p class="empty">Aucune séance enregistrée.</p>';
     return;
@@ -777,7 +796,11 @@ async function loadWorkouts() {
           <div class="workout-card-title">${w.nom ?? 'Séance'}</div>
           <div class="workout-card-date">${w.date} · ${w.duree_min ?? '?'} min · Ressenti ${w.ressenti ?? '—'}/10</div>
         </div>
-        <button class="danger" data-del-w="${w.id}">Suppr.</button>
+        <div class="workout-card-actions">
+          <button class="secondary" data-redo-w="${w.id}" title="Refaire cette séance">🔁 Refaire</button>
+          <button class="secondary" data-tmpl-w="${w.id}" title="Sauver comme modèle">💾 Modèle</button>
+          <button class="danger" data-del-w="${w.id}">Suppr.</button>
+        </div>
       </div>
       <div>${pills || '<em class="empty">Pas d\'exercices détaillés</em>'}</div>
       ${w.notes ? `<p style="margin-top:0.5rem;color:var(--text-dim);">${w.notes}</p>` : ''}
@@ -791,6 +814,210 @@ async function loadWorkouts() {
       loadWorkouts();
     });
   });
+  $$('[data-redo-w]').forEach(b => {
+    b.addEventListener('click', () => {
+      const w = list.find(x => String(x.id) === b.dataset.redoW);
+      if (w) redoWorkout(w);
+    });
+  });
+  $$('[data-tmpl-w]').forEach(b => {
+    b.addEventListener('click', () => {
+      const w = list.find(x => String(x.id) === b.dataset.tmplW);
+      if (w) saveAsTemplate(w);
+    });
+  });
+}
+
+// Re-open the Entraînements form pre-filled with a previous workout's
+// exercises (charges intact so the user can either repeat or progress).
+function redoWorkout(workout) {
+  const draftHasData = $$('.exercise-card').some(c => readExerciseCard(c));
+  if (draftHasData && !confirm('Une séance est déjà en cours. La remplacer par cette séance à refaire ?')) return;
+  const form = $('#workout-form');
+  form.reset();
+  form.date.value = new Date().toISOString().slice(0, 10);
+  form.nom.value = workout.nom || 'Séance refaite';
+  $('#exercises-list').innerHTML = '';
+  exerciseCounter = 0;
+  for (const ex of (workout.exercises || [])) {
+    // Strip the previous-workout's series_details strings into objects
+    let sd = null;
+    if (ex.series_details) {
+      try { sd = typeof ex.series_details === 'string' ? JSON.parse(ex.series_details) : ex.series_details; } catch {}
+    }
+    addExerciseCard({ ...ex, series_details: sd, done: false });
+  }
+  updateSessionSummary();
+  saveWorkoutDraft();
+  const tabBtn = document.querySelector('.tab[data-tab="entrainements"]');
+  if (tabBtn) tabBtn.click();
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function saveAsTemplate(workout) {
+  const name = prompt('Nom du modèle ?', workout.nom || 'Modèle séance');
+  if (!name) return;
+  const exercises = (workout.exercises || []).map(e => {
+    let sd = null;
+    if (e.series_details) {
+      try { sd = typeof e.series_details === 'string' ? JSON.parse(e.series_details) : e.series_details; } catch {}
+    }
+    return {
+      nom: e.nom, groupe_musculaire: e.groupe_musculaire, type_equipement: e.type_equipement,
+      series: e.series, repetitions: e.repetitions, charge_kg: e.charge_kg, repos_sec: e.repos_sec,
+      series_details: sd,
+      duree_min: e.duree_min, distance_km: e.distance_km, vitesse_kmh: e.vitesse_kmh,
+      inclinaison_pct: e.inclinaison_pct, niveau_resistance: e.niveau_resistance, kcal_machine: e.kcal_machine,
+      notes: e.notes,
+    };
+  });
+  try {
+    await api('/api/templates', { method: 'POST', body: { titre: name, exercises } });
+    alert(`✓ Modèle "${name}" sauvegardé. Disponible dans l'onglet Plans → Mes modèles.`);
+  } catch (err) {
+    alert('Erreur : ' + err.message);
+  }
+}
+
+// --- REST TIMER ---
+// Singleton floating widget. Drives a date-anchored countdown so backgrounding
+// the tab can't drift the timer. Beeps + vibrates at zero.
+const restTimer = {
+  endTime: 0,
+  rafId: null,
+  el: null,
+
+  ensureWidget() {
+    if (this.el) return;
+    this.el = document.createElement('div');
+    this.el.id = 'rest-timer';
+    this.el.className = 'rest-timer hidden';
+    this.el.innerHTML = `
+      <div class="rest-label">Repos</div>
+      <div class="rest-time">0:00</div>
+      <div class="rest-controls">
+        <button type="button" data-delta="-15" title="Retirer 15 s">−15</button>
+        <button type="button" data-delta="15" title="Ajouter 15 s">+15</button>
+        <button type="button" data-action="skip" title="Passer">Skip</button>
+      </div>
+    `;
+    this.el.querySelectorAll('[data-delta]').forEach(b => {
+      b.addEventListener('click', () => this.adjust(parseInt(b.dataset.delta, 10)));
+    });
+    this.el.querySelector('[data-action="skip"]').addEventListener('click', () => this.stop());
+    document.body.appendChild(this.el);
+  },
+
+  start(seconds) {
+    if (!seconds || seconds <= 0) seconds = 90;
+    this.ensureWidget();
+    this.endTime = Date.now() + seconds * 1000;
+    this.el.classList.remove('hidden', 'done');
+    this.tick();
+    if (this.rafId) clearInterval(this.rafId);
+    this.rafId = setInterval(() => this.tick(), 250);
+  },
+
+  adjust(deltaSec) {
+    if (!this.rafId) return;
+    this.endTime += deltaSec * 1000;
+    this.tick();
+  },
+
+  stop() {
+    if (this.rafId) clearInterval(this.rafId);
+    this.rafId = null;
+    if (this.el) this.el.classList.add('hidden');
+  },
+
+  tick() {
+    if (!this.el) return;
+    const remainingMs = this.endTime - Date.now();
+    if (remainingMs <= 0) { this.onEnd(); return; }
+    const total = Math.ceil(remainingMs / 1000);
+    const m = Math.floor(total / 60), s = total % 60;
+    this.el.querySelector('.rest-time').textContent = `${m}:${String(s).padStart(2, '0')}`;
+  },
+
+  onEnd() {
+    if (this.rafId) clearInterval(this.rafId);
+    this.rafId = null;
+    this.el.classList.add('done');
+    this.el.querySelector('.rest-time').textContent = '✓ GO';
+    this.beep();
+    if (navigator.vibrate) try { navigator.vibrate([180, 90, 180]); } catch {}
+    setTimeout(() => { if (this.el) this.el.classList.add('hidden'); this.el?.classList.remove('done'); }, 4000);
+  },
+
+  beep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const t = ctx.currentTime;
+      // Two short ascending beeps
+      for (let i = 0; i < 2; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 660 + i * 220;
+        gain.gain.setValueAtTime(0.25, t + i * 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.18 + 0.15);
+        osc.start(t + i * 0.18);
+        osc.stop(t + i * 0.18 + 0.18);
+      }
+    } catch {}
+  },
+};
+
+// Build the per-set progress dots. Called when the card is added or when
+// the user changes the series count. Stays empty in variable / cardio modes.
+function setupSetsProgress(card) {
+  const container = card.querySelector('.sets-progress');
+  const seriesInput = card.querySelector('.series');
+  const reposInput = card.querySelector('.repos');
+  const doneCheckbox = card.querySelector('.exercise-done');
+  const variableToggle = card.querySelector('.variable-toggle');
+  const equipSel = card.querySelector('.equipment-select');
+
+  function shouldShow() {
+    if (variableToggle?.checked) return false;
+    if (equipSel?.value === 'cardio' || equipSel?.value === 'sport') return false;
+    const n = parseInt(seriesInput.value, 10) || 0;
+    return n > 0 && n <= 12;
+  }
+
+  function rebuild() {
+    container.innerHTML = '';
+    if (!shouldShow()) { container.classList.add('hidden'); return; }
+    container.classList.remove('hidden');
+    const n = parseInt(seriesInput.value, 10);
+    for (let i = 1; i <= n; i++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'set-btn';
+      btn.textContent = i;
+      btn.addEventListener('click', () => {
+        btn.classList.toggle('done');
+        if (btn.classList.contains('done')) {
+          const repos = parseInt(reposInput.value, 10) || 90;
+          restTimer.start(repos);
+        }
+        // Auto-mark the exercise as fully done when every set is checked
+        const all = Array.from(container.querySelectorAll('.set-btn'));
+        const allDone = all.length > 0 && all.every(b => b.classList.contains('done'));
+        if (allDone && !doneCheckbox.checked) {
+          doneCheckbox.checked = true;
+          doneCheckbox.dispatchEvent(new Event('change'));
+        }
+        saveWorkoutDraft();
+      });
+      container.appendChild(btn);
+    }
+  }
+
+  seriesInput.addEventListener('input', rebuild);
+  variableToggle?.addEventListener('change', rebuild);
+  equipSel?.addEventListener('change', rebuild);
+  rebuild();
 }
 
 // --- WORKOUT DRAFT AUTOSAVE ---
@@ -933,6 +1160,127 @@ $('#workout-form').addEventListener('submit', async (e) => {
     cachedBodyweight = null;
   } catch (err) { alert('Erreur : ' + err.message); }
 });
+
+// --- PER-EXERCISE PROGRESSION & PRs ---
+// Aggregate every exercise from the user's history into one row per
+// (normalized) name, with per-session best charge/reps and total volume.
+// A PR is flagged when the latest session matched-or-exceeded the previous
+// best charge (or total volume).
+function computeExerciseRecords(workouts) {
+  const byName = new Map();
+  for (const w of workouts) {
+    for (const ex of (w.exercises || [])) {
+      const rawName = (ex.nom || '').trim();
+      if (!rawName) continue;
+      const key = rawName.toLowerCase();
+      if (!byName.has(key)) byName.set(key, { name: rawName, sessions: [] });
+      const entry = byName.get(key);
+
+      // Best charge × reps in this session (handles variable rows too)
+      let bestCharge = null, bestReps = null, volume = 0;
+      let sd = null;
+      if (ex.series_details) {
+        try { sd = typeof ex.series_details === 'string' ? JSON.parse(ex.series_details) : ex.series_details; } catch {}
+      }
+      if (Array.isArray(sd) && sd.length) {
+        for (const s of sd) {
+          if (s.charge != null && (bestCharge == null || s.charge > bestCharge)) {
+            bestCharge = s.charge; bestReps = s.reps ?? null;
+          }
+          volume += (s.reps || 0) * (s.charge || 0);
+        }
+      } else if (ex.charge_kg != null && ex.series && ex.repetitions) {
+        bestCharge = ex.charge_kg;
+        const m = String(ex.repetitions).match(/(\d+)(?:\s*-\s*(\d+))?/);
+        const reps = m ? (m[2] ? (parseInt(m[1], 10) + parseInt(m[2], 10)) / 2 : parseInt(m[1], 10)) : 0;
+        bestReps = reps || null;
+        volume = (ex.series || 0) * reps * (ex.charge_kg || 0);
+      } else if (ex.type_equipement === 'cardio' || ex.type_equipement === 'sport') {
+        volume = ex.duree_min || 0;
+      }
+
+      entry.sessions.push({
+        date: w.date,
+        bestCharge, bestReps, volume,
+        type_equipement: ex.type_equipement,
+        duree_min: ex.duree_min,
+        distance_km: ex.distance_km,
+        vitesse_kmh: ex.vitesse_kmh,
+      });
+    }
+  }
+
+  // Chronological order + PR detection
+  const today = new Date().toISOString().slice(0, 10);
+  const fortnightAgo = new Date(); fortnightAgo.setDate(fortnightAgo.getDate() - 14);
+  const fortnightStr = fortnightAgo.toISOString().slice(0, 10);
+
+  const result = [];
+  for (const e of byName.values()) {
+    e.sessions.sort((a, b) => a.date.localeCompare(b.date));
+    let prevBestCharge = 0, prevBestVolume = 0;
+    for (const s of e.sessions) {
+      s.is_pr_charge = s.bestCharge != null && s.bestCharge > prevBestCharge;
+      s.is_pr_volume = s.volume > prevBestVolume;
+      if (s.bestCharge != null && s.bestCharge > prevBestCharge) prevBestCharge = s.bestCharge;
+      if (s.volume > prevBestVolume) prevBestVolume = s.volume;
+    }
+    const last = e.sessions[e.sessions.length - 1];
+    e.allTimeMaxCharge = prevBestCharge || null;
+    e.allTimeMaxVolume = prevBestVolume || null;
+    e.lastSession = last;
+    e.recentPR = last && last.date >= fortnightStr && (last.is_pr_charge || last.is_pr_volume);
+    e.totalSessions = e.sessions.length;
+    result.push(e);
+  }
+  // Sort: most-recently trained first
+  result.sort((a, b) => (b.lastSession?.date || '').localeCompare(a.lastSession?.date || ''));
+  return result;
+}
+
+async function renderExerciseRecords() {
+  const container = $('#exercise-records');
+  if (!container) return;
+  let workouts = [];
+  try { workouts = await api('/api/workouts'); } catch { return; }
+  const records = computeExerciseRecords(workouts);
+  if (!records.length) {
+    container.innerHTML = '<p class="empty">Aucun exercice enregistré pour le moment.</p>';
+    return;
+  }
+  container.innerHTML = records.map((e, i) => {
+    const last = e.lastSession;
+    const isCardio = last?.type_equipement === 'cardio' || last?.type_equipement === 'sport';
+    const summary = isCardio
+      ? `${e.totalSessions} séances · meilleur ${Math.round(e.allTimeMaxVolume)} min cumul`
+      : `${e.totalSessions} séances · record ${e.allTimeMaxCharge ?? '?'} kg`;
+    const badge = e.recentPR ? '<span class="pr-badge">🏆 PR récent</span>' : '';
+    return `
+      <details class="ex-record" data-i="${i}">
+        <summary>
+          <span class="ex-record-name">${e.name}</span>
+          <span class="ex-record-summary">${summary} ${badge}</span>
+        </summary>
+        <div class="ex-record-detail">
+          <table>
+            <thead><tr><th>Date</th><th>Meilleur</th><th>Volume</th></tr></thead>
+            <tbody>
+              ${e.sessions.slice().reverse().map(s => `
+                <tr>
+                  <td>${s.date}</td>
+                  <td>${isCardio
+                    ? `${s.duree_min ?? '?'} min${s.distance_km ? ` · ${s.distance_km} km` : ''}${s.vitesse_kmh ? ` · ${s.vitesse_kmh} km/h` : ''}`
+                    : `${s.bestCharge ?? '?'} kg × ${s.bestReps ?? '?'}`} ${s.is_pr_charge ? '🏆' : ''}</td>
+                  <td>${Math.round(s.volume)}${isCardio ? ' min' : ' kg'} ${s.is_pr_volume && !s.is_pr_charge ? '🏆' : ''}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    `;
+  }).join('');
+}
 
 // --- BODY MAP ---
 async function renderBodyMap() {
@@ -1226,11 +1574,27 @@ async function loadPlans() {
   for (const p of filtered) {
     const card = document.createElement('div');
     card.className = 'plan-card';
-    const icon = p.type === 'workout' ? '🏋️' : '🥗';
-    const { exercises, cleaned } = extractPlanJSON(p.contenu || '');
-    const startBtn = (p.type === 'workout' && exercises && exercises.length)
-      ? `<button class="primary" data-start-p="${p.id}">🏋️ Démarrer cette séance</button>`
-      : '';
+    const icon = p.type === 'template' ? '💪' : (p.type === 'workout' ? '🏋️' : '🥗');
+
+    // Templates store a JSON {exercises:[...]} directly in `contenu`.
+    // AI workouts have markdown with an embedded coach-plan-json block.
+    let exercises = null, cleaned = p.contenu || '';
+    if (p.type === 'template') {
+      try {
+        const parsed = JSON.parse(p.contenu || '{}');
+        exercises = parsed.exercises || null;
+        cleaned = exercises
+          ? exercises.map(e => `- **${e.nom || ''}**${e.series ? ` — ${e.series} × ${e.repetitions ?? '?'}${e.charge_kg ? ` @ ${e.charge_kg} kg` : ''}` : ''}`).join('\n')
+          : '*(modèle vide)*';
+      } catch { cleaned = '*(modèle illisible)*'; }
+    } else if (p.type === 'workout') {
+      const r = extractPlanJSON(p.contenu || '');
+      exercises = r.exercises;
+      cleaned = r.cleaned;
+    }
+
+    const canStart = (p.type === 'workout' || p.type === 'template') && exercises && exercises.length;
+    const startBtn = canStart ? `<button class="primary" data-start-p="${p.id}">🏋️ Démarrer cette séance</button>` : '';
     card.innerHTML = `
       <div class="plan-card-header">
         <div>

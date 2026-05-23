@@ -206,6 +206,8 @@
       <h2>Journal d'entraînement</h2>
       <p class="hint">Notez chaque séance pour permettre au coach d'adapter les prochaines.</p>
 
+      <div id="quick-start" class="quick-start hidden"></div>
+
       <form id="workout-form" class="card">
         <div class="grid-3">
           <label>Date
@@ -271,6 +273,13 @@
         <h3>Volume d'entraînement</h3>
         <canvas id="chart-workouts" height="120"></canvas>
       </div>
+
+      <div class="card">
+        <h3>🏆 Mes records par exercice</h3>
+        <p class="hint">Chaque exercice de ton historique, son meilleur effort, le nombre de séances et l'évolution. Les exercices avec un PR récent (≤ 14 j) sont marqués 🏆.</p>
+        <div id="exercise-records"></div>
+      </div>
+
       <div class="actions">
         <button id="analyze-btn" class="primary">🧠 Analyser ma progression avec l'IA</button>
       </div>
@@ -409,7 +418,8 @@
       <h2>Mes plans sauvegardés</h2>
       <div class="filters">
         <button data-filter="all" class="filter active">Tout</button>
-        <button data-filter="workout" class="filter">Séances</button>
+        <button data-filter="workout" class="filter">Séances IA</button>
+        <button data-filter="template" class="filter">Mes modèles</button>
         <button data-filter="nutrition" class="filter">Nutrition</button>
       </div>
       <div id="plans-list"></div>
