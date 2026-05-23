@@ -475,6 +475,27 @@ tr:last-child td { border-bottom: none; }
   color: var(--text-dim);
 }
 
+.energy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+.energy-cell {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.energy-cell.highlight { border-color: var(--accent); background: rgba(47, 129, 247, 0.08); }
+.energy-label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.03em; }
+.energy-value { font-size: 1.3rem; font-weight: 600; color: var(--text); line-height: 1.1; }
+.energy-cell.highlight .energy-value { color: var(--accent); }
+.energy-sub { font-size: 0.75rem; color: var(--text-dim); }
+
 /* === Body pictogram === */
 .exercise-pictogram {
   display: flex;

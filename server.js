@@ -8,6 +8,63 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// Energy / macros calculation — kept in sync with public/energy-profile.js
+const ACTIVITY_FACTORS = { sedentaire: 1.2, leger: 1.375, modere: 1.55, actif: 1.725, tres_actif: 1.9 };
+const ACTIVITY_LABELS = { sedentaire: 'Sédentaire', leger: 'Léger', modere: 'Modéré', actif: 'Actif', tres_actif: 'Très actif' };
+const GOAL_ADJUSTMENTS = { perte_graisse: -400, prise_masse: 300, hypertrophie: 200, force: 100, endurance: 0, maintien: 0 };
+const GOAL_LABELS = { perte_graisse: 'Perte de graisse', prise_masse: 'Prise de masse', hypertrophie: 'Hypertrophie', force: 'Force', endurance: 'Endurance', maintien: 'Maintien' };
+
+function levelFromFrequency(freq) {
+  if (!freq || freq <= 1) return 'sedentaire';
+  if (freq <= 3) return 'leger';
+  if (freq <= 5) return 'modere';
+  if (freq <= 6) return 'actif';
+  return 'tres_actif';
+}
+function classifyGoal(text) {
+  const s = (text || '').toLowerCase();
+  if (/perd|sèche|sech|maigr|graisse|déficit|deficit/.test(s)) return 'perte_graisse';
+  if (/prise.*mass|gain|grossir|surpl|bulk/.test(s)) return 'prise_masse';
+  if (/hypertroph|muscul|volume/.test(s)) return 'hypertrophie';
+  if (/force|powerlift|1rm|force max/.test(s)) return 'force';
+  if (/endur|marathon|trail|10\s*km|semi/.test(s)) return 'endurance';
+  return 'maintien';
+}
+
+function computeEnergyProfile({ profile, lastWeightKg }) {
+  if (!profile) return { ready: false };
+  const age = profile.annee_naissance
+    ? (new Date().getFullYear() - profile.annee_naissance)
+    : (profile.age || null);
+  if (!age || !profile.taille_cm || !profile.sexe || !lastWeightKg) return { ready: false };
+
+  const sexConst = profile.sexe === 'femme' ? -161 : 5;
+  const bmr = Math.round(10 * lastWeightKg + 6.25 * profile.taille_cm - 5 * age + sexConst);
+  const level = profile.niveau_activite || levelFromFrequency(profile.frequence_hebdo);
+  const factor = ACTIVITY_FACTORS[level] || 1.55;
+  const tdee = Math.round(bmr * factor);
+  const goalId = classifyGoal(profile.objectif);
+  const adjust = GOAL_ADJUSTMENTS[goalId] ?? 0;
+  const target = Math.round(tdee + adjust);
+  let proteinPerKg = 1.6;
+  if (goalId === 'perte_graisse') proteinPerKg = 2.0;
+  else if (['prise_masse', 'hypertrophie', 'force'].includes(goalId)) proteinPerKg = 1.8;
+  const protein_g = Math.round(proteinPerKg * lastWeightKg);
+  const fat_g = Math.round(0.9 * lastWeightKg);
+  const carbs_g = Math.max(0, Math.round((target - protein_g * 4 - fat_g * 9) / 4));
+  const water_ml = Math.round(33 * lastWeightKg);
+  return {
+    ready: true,
+    age, weight_kg: lastWeightKg, sexe: profile.sexe,
+    bmr_kcal: bmr,
+    activity_level: level, activity_label: ACTIVITY_LABELS[level], activity_factor: factor,
+    tdee_kcal: tdee,
+    goal_id: goalId, goal_label: GOAL_LABELS[goalId], goal_adjust_kcal: adjust,
+    target_kcal: target,
+    protein_g, fat_g, carbs_g, water_ml,
+  };
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -98,6 +155,7 @@ for (const stmt of [
   'ALTER TABLE profile ADD COLUMN lieu TEXT',
   'ALTER TABLE profile ADD COLUMN user_id INTEGER',
   'ALTER TABLE profile ADD COLUMN annee_naissance INTEGER',
+  'ALTER TABLE profile ADD COLUMN niveau_activite TEXT',
   'ALTER TABLE measurements ADD COLUMN user_id INTEGER',
   'ALTER TABLE measurements ADD COLUMN tour_bras_gauche_cm REAL',
   'ALTER TABLE measurements ADD COLUMN tour_bras_droit_cm REAL',
@@ -144,9 +202,12 @@ db.exec(`
   const row = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='profile'").get();
   if (row && /CHECK\s*\(\s*id\s*=\s*1\s*\)/i.test(row.sql)) {
     console.log('→ Migration: profile table rebuilt for multi-user schema.');
-    // Preserve annee_naissance only if the legacy table already had it
-    const cols = db.prepare("PRAGMA table_info(profile)").all().map(c => c.name);
-    const hasAN = cols.includes('annee_naissance');
+    // Copy whatever columns the old table has (minus id) so we don't lose
+    // any data added via ALTER TABLE ADD COLUMN between deploys.
+    const legacyCols = db.prepare("PRAGMA table_info(profile)").all()
+      .map(c => c.name)
+      .filter(name => name !== 'id');
+    const colList = legacyCols.join(', ');
     db.exec(`
       BEGIN;
       ALTER TABLE profile RENAME TO profile_legacy;
@@ -161,14 +222,15 @@ db.exec(`
         niveau TEXT,
         objectif TEXT,
         frequence_hebdo INTEGER,
+        niveau_activite TEXT,
         lieu TEXT,
         equipement TEXT,
         contraintes TEXT,
         preferences_alim TEXT,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
-      INSERT INTO profile (user_id, nom, age, ${hasAN ? 'annee_naissance, ' : ''}sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim, updated_at)
-        SELECT user_id, nom, age, ${hasAN ? 'annee_naissance, ' : ''}sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim, updated_at FROM profile_legacy;
+      INSERT INTO profile (${colList})
+        SELECT ${colList} FROM profile_legacy;
       DROP TABLE profile_legacy;
       COMMIT;
     `);
@@ -428,19 +490,19 @@ function getRecentWorkouts(userId, limit = 10) {
 function buildContextSummary(userId) {
   const profile = getProfile(userId);
   if (profile) {
-    // Derive an always-up-to-date age from the year of birth when available;
-    // fall back to whatever the user typed in the legacy "age" field.
     if (profile.annee_naissance) {
       profile.age_calcule = new Date().getFullYear() - profile.annee_naissance;
     } else if (profile.age) {
       profile.age_calcule = profile.age;
     }
   }
-  return {
-    profile,
-    measurements: getRecentMeasurements(userId, 8),
-    workouts: getRecentWorkouts(userId, 8),
-  };
+  const measurements = getRecentMeasurements(userId, 8);
+  const workouts = getRecentWorkouts(userId, 8);
+
+  const lastWeight = measurements.find(m => m.poids_kg != null)?.poids_kg;
+  const energy = computeEnergyProfile({ profile, lastWeightKg: lastWeight });
+
+  return { profile, measurements, workouts, energy };
 }
 
 // ==================== Profile ====================
@@ -455,7 +517,8 @@ app.post('/api/profile', (req, res) => {
     db.prepare(`
       UPDATE profile SET
         nom=@nom, age=@age, annee_naissance=@annee_naissance, sexe=@sexe, taille_cm=@taille_cm, niveau=@niveau,
-        objectif=@objectif, frequence_hebdo=@frequence_hebdo, lieu=@lieu, equipement=@equipement,
+        objectif=@objectif, frequence_hebdo=@frequence_hebdo, niveau_activite=@niveau_activite,
+        lieu=@lieu, equipement=@equipement,
         contraintes=@contraintes, preferences_alim=@preferences_alim, updated_at=CURRENT_TIMESTAMP
       WHERE user_id=@user_id
     `).run({
@@ -463,18 +526,20 @@ app.post('/api/profile', (req, res) => {
       nom: p.nom ?? null, age: p.age ?? null, annee_naissance: p.annee_naissance ?? null,
       sexe: p.sexe ?? null, taille_cm: p.taille_cm ?? null,
       niveau: p.niveau ?? null, objectif: p.objectif ?? null, frequence_hebdo: p.frequence_hebdo ?? null,
+      niveau_activite: p.niveau_activite ?? null,
       lieu: p.lieu ?? null, equipement: p.equipement ?? null, contraintes: p.contraintes ?? null,
       preferences_alim: p.preferences_alim ?? null,
     });
   } else {
     db.prepare(`
-      INSERT INTO profile (user_id, nom, age, annee_naissance, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim)
-      VALUES (@user_id, @nom, @age, @annee_naissance, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @lieu, @equipement, @contraintes, @preferences_alim)
+      INSERT INTO profile (user_id, nom, age, annee_naissance, sexe, taille_cm, niveau, objectif, frequence_hebdo, niveau_activite, lieu, equipement, contraintes, preferences_alim)
+      VALUES (@user_id, @nom, @age, @annee_naissance, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @niveau_activite, @lieu, @equipement, @contraintes, @preferences_alim)
     `).run({
       user_id: req.userId,
       nom: p.nom ?? null, age: p.age ?? null, annee_naissance: p.annee_naissance ?? null,
       sexe: p.sexe ?? null, taille_cm: p.taille_cm ?? null,
       niveau: p.niveau ?? null, objectif: p.objectif ?? null, frequence_hebdo: p.frequence_hebdo ?? null,
+      niveau_activite: p.niveau_activite ?? null,
       lieu: p.lieu ?? null, equipement: p.equipement ?? null, contraintes: p.contraintes ?? null,
       preferences_alim: p.preferences_alim ?? null,
     });
@@ -687,6 +752,22 @@ function environmentBlock(profile) {
   return `\n## Environnement d'entraînement\n${note}\n`;
 }
 
+function energyBlock(energy) {
+  if (!energy || !energy.ready) return '';
+  return `\n## Profil énergétique calculé (Mifflin-St Jeor + activité + objectif)
+- Métabolisme de base : ${energy.bmr_kcal} kcal
+- Niveau d'activité : ${energy.activity_label} (×${energy.activity_factor})
+- Dépense énergétique journalière (DEJ) : ${energy.tdee_kcal} kcal
+- Objectif détecté : ${energy.goal_label} (${energy.goal_adjust_kcal >= 0 ? '+' : ''}${energy.goal_adjust_kcal} kcal)
+- **Cible quotidienne : ${energy.target_kcal} kcal**
+- Protéines : ${energy.protein_g} g (~${(energy.protein_g/energy.weight_kg).toFixed(1)} g/kg)
+- Lipides : ${energy.fat_g} g
+- Glucides : ${energy.carbs_g} g
+- Hydratation : ${(energy.water_ml/1000).toFixed(1)} L/j
+
+Aligne tes recommandations nutritionnelles sur ces valeurs (ou justifie tout écart par une raison physiologique précise).\n`;
+}
+
 app.post('/api/generate-workout', async (req, res) => {
   if (!requireLLM(res)) return;
   try {
@@ -700,6 +781,7 @@ app.post('/api/generate-workout', async (req, res) => {
 ## Profil
 ${JSON.stringify(ctx.profile, null, 2)}
 ${environmentBlock(ctx.profile)}
+${energyBlock(ctx.energy)}
 ## Mesures récentes (chronologique inverse)
 ${JSON.stringify(ctx.measurements, null, 2)}
 
@@ -738,7 +820,7 @@ app.post('/api/generate-nutrition', async (req, res) => {
 # Contexte
 ## Profil
 ${JSON.stringify(ctx.profile, null, 2)}
-
+${energyBlock(ctx.energy)}
 ## Mesures récentes
 ${JSON.stringify(ctx.measurements, null, 2)}
 
@@ -747,7 +829,7 @@ ${JSON.stringify(ctx.workouts, null, 2)}
 
 # Demande
 - Durée du plan : ${duree} jours
-- Calories cible : ${calories_cible ? `${calories_cible} kcal/jour` : 'à calculer selon le profil et l\'objectif'}
+- Calories cible : ${calories_cible ? `${calories_cible} kcal/jour` : (ctx.energy?.ready ? `${ctx.energy.target_kcal} kcal/jour (calculée à partir du profil)` : 'à calculer selon le profil et l\'objectif')}
 - Calcule besoins (BMR + dépense + objectif) et propose une cible journalière macros (protéines/glucides/lipides en g)
 - Donne un exemple type de répartition repas (petit-déjeuner, déjeuner, collation, dîner)
 - Prévois 2-3 variantes par repas pour éviter la monotonie
@@ -777,6 +859,7 @@ app.post('/api/coach-chat', async (req, res) => {
 ## Profil
 ${JSON.stringify(ctx.profile, null, 2)}
 ${environmentBlock(ctx.profile)}
+${energyBlock(ctx.energy)}
 ## Mesures récentes
 ${JSON.stringify(ctx.measurements, null, 2)}
 
@@ -804,6 +887,7 @@ app.post('/api/progress-analysis', async (req, res) => {
 ## Profil
 ${JSON.stringify(ctx.profile, null, 2)}
 ${environmentBlock(ctx.profile)}
+${energyBlock(ctx.energy)}
 ## Mesures (chronologique)
 ${JSON.stringify(ctx.measurements, null, 2)}
 

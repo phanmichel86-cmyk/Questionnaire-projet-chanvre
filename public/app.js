@@ -112,7 +112,7 @@ function refreshComputedAge() {
 
 async function loadProfile() {
   const p = await api('/api/profile');
-  if (!p) return;
+  if (!p) { renderEnergyProfile(null); return; }
   const form = $('#profile-form');
   for (const [key, val] of Object.entries(p)) {
     const input = form.elements[key];
@@ -125,7 +125,92 @@ async function loadProfile() {
     yearInput.value = new Date().getFullYear() - p.age;
   }
   refreshComputedAge();
+  await renderEnergyProfile(p);
 }
+
+async function renderEnergyProfile(profile) {
+  const body = document.getElementById('energy-profile-body');
+  const hint = document.getElementById('energy-hint');
+  if (!body || !window.energyProfile) return;
+  // Read live values from the form so the card updates as the user types
+  const form = document.getElementById('profile-form');
+  const liveProfile = profile ? { ...profile } : {};
+  if (form) {
+    const fd = new FormData(form);
+    liveProfile.annee_naissance = parseInt(fd.get('annee_naissance'), 10) || null;
+    liveProfile.taille_cm = parseFloat(fd.get('taille_cm')) || null;
+    liveProfile.sexe = fd.get('sexe') || null;
+    liveProfile.objectif = fd.get('objectif') || liveProfile.objectif;
+    liveProfile.frequence_hebdo = parseInt(fd.get('frequence_hebdo'), 10) || null;
+    liveProfile.niveau_activite = fd.get('niveau_activite') || null;
+  }
+
+  // Latest weight (from measurements, or fallback to cached bodyweight)
+  let lastWeight = null;
+  try {
+    const ms = await api('/api/measurements');
+    const w = ms.slice().reverse().find(m => m.poids_kg != null);
+    if (w) lastWeight = w.poids_kg;
+  } catch {}
+
+  const r = window.energyProfile.computeEnergyProfile({ profile: liveProfile, lastWeightKg: lastWeight });
+  if (!r.ready) {
+    body.innerHTML = `<p class="hint">Pour afficher le profil énergétique, renseignez : <strong>${r.missing.join(', ')}</strong>.</p>`;
+    return;
+  }
+  hint.textContent = `Calculé sur Mifflin-St Jeor (référence en nutrition clinique) avec votre dernier poids ${r.weight_kg} kg, taille, âge ${r.age} ans, sexe ${r.sexe === 'femme' ? 'F' : 'H'}, niveau d'activité « ${r.activity_label} », objectif « ${r.goal_label} ».`;
+  body.innerHTML = `
+    <div class="energy-grid">
+      <div class="energy-cell">
+        <span class="energy-label">Métabolisme de base</span>
+        <span class="energy-value">${r.bmr_kcal} kcal</span>
+        <span class="energy-sub">au repos complet</span>
+      </div>
+      <div class="energy-cell">
+        <span class="energy-label">Dépense journalière (DEJ)</span>
+        <span class="energy-value">${r.tdee_kcal} kcal</span>
+        <span class="energy-sub">× ${r.activity_factor} (${r.activity_label})</span>
+      </div>
+      <div class="energy-cell highlight">
+        <span class="energy-label">Cible quotidienne</span>
+        <span class="energy-value">${r.target_kcal} kcal</span>
+        <span class="energy-sub">${r.goal_adjust_kcal > 0 ? '+' : ''}${r.goal_adjust_kcal} kcal vs DEJ — ${r.goal_label}</span>
+      </div>
+      <div class="energy-cell">
+        <span class="energy-label">Protéines</span>
+        <span class="energy-value">${r.protein_g} g</span>
+        <span class="energy-sub">${(r.protein_g/r.weight_kg).toFixed(1)} g/kg de poids</span>
+      </div>
+      <div class="energy-cell">
+        <span class="energy-label">Lipides</span>
+        <span class="energy-value">${r.fat_g} g</span>
+        <span class="energy-sub">≈ ${Math.round(r.fat_g * 9)} kcal</span>
+      </div>
+      <div class="energy-cell">
+        <span class="energy-label">Glucides</span>
+        <span class="energy-value">${r.carbs_g} g</span>
+        <span class="energy-sub">≈ ${Math.round(r.carbs_g * 4)} kcal (le reste)</span>
+      </div>
+      <div class="energy-cell">
+        <span class="energy-label">Hydratation</span>
+        <span class="energy-value">${(r.water_ml/1000).toFixed(1)} L</span>
+        <span class="energy-sub">33 ml/kg, à augmenter les jours d'entraînement</span>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:0.9rem">Valeurs indicatives basées sur les standards de nutrition sportive. Ajustez selon votre ressenti et la balance après 2-3 semaines.</p>
+  `;
+}
+
+// Re-render energy profile when relevant fields change
+document.addEventListener('input', (e) => {
+  if (!e.target?.name) return;
+  if (['annee_naissance', 'taille_cm', 'sexe', 'objectif', 'frequence_hebdo', 'niveau_activite'].includes(e.target.name)) {
+    renderEnergyProfile(null);
+  }
+});
+document.addEventListener('change', (e) => {
+  if (e.target?.name === 'niveau_activite' || e.target?.name === 'sexe') renderEnergyProfile(null);
+});
 
 document.addEventListener('input', (e) => {
   if (e.target?.name === 'annee_naissance') refreshComputedAge();
@@ -139,11 +224,13 @@ $('#profile-form').addEventListener('submit', async (e) => {
   data.age = data.annee_naissance ? (new Date().getFullYear() - data.annee_naissance) : null;
   data.taille_cm = num(data.taille_cm);
   data.frequence_hebdo = num(data.frequence_hebdo);
+  data.niveau_activite = data.niveau_activite || null;
   try {
     await api('/api/profile', { method: 'POST', body: data });
     const s = $('#profile-status');
     s.textContent = '✓ Profil enregistré';
     setTimeout(() => { s.textContent = ''; }, 2500);
+    renderEnergyProfile(null);
   } catch (err) { alert('Erreur : ' + err.message); }
 });
 

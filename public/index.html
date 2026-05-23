@@ -17,6 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/marked@13.0.0/marked.min.js"></script>
   <script src="/exercises.js"></script>
   <script src="/body-pict.js"></script>
+  <script src="/energy-profile.js"></script>
 </head>
 <body>
   <header class="hero">
@@ -77,6 +78,16 @@
         <label>Fréquence hebdo (séances/sem.)
           <input name="frequence_hebdo" type="number" min="0" max="14" />
         </label>
+        <label class="span-2">Niveau d'activité global
+          <select name="niveau_activite">
+            <option value="">— Auto (basé sur la fréquence) —</option>
+            <option value="sedentaire">Sédentaire — bureau, peu de marche, &lt; 2 séances/sem.</option>
+            <option value="leger">Léger — 1-3 séances/sem. + marche quotidienne</option>
+            <option value="modere">Modéré — 3-5 séances/sem. ou métier semi-physique</option>
+            <option value="actif">Actif — 6-7 séances/sem. ou métier physique</option>
+            <option value="tres_actif">Très actif — 2 séances/jour ou métier très physique</option>
+          </select>
+        </label>
         <label class="span-2">Objectif principal
           <textarea name="objectif" rows="2" placeholder="Ex: perdre 5 kg de gras en 3 mois tout en gardant ma masse musculaire"></textarea>
         </label>
@@ -105,6 +116,12 @@
           <span id="profile-status" class="status"></span>
         </div>
       </form>
+
+      <div class="card" id="energy-profile-card">
+        <h3>📊 Profil énergétique</h3>
+        <p class="hint" id="energy-hint">Calculé à partir de votre profil + dernière mesure de poids. Mettez à jour ces informations pour recalculer.</p>
+        <div id="energy-profile-body"></div>
+      </div>
     </section>
 
     <!-- MESURES -->
