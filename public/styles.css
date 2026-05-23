@@ -468,6 +468,13 @@ tr:last-child td { border-bottom: none; }
 
 .asym-warn { cursor: help; }
 
+.computed-age {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
 /* === Body pictogram === */
 .exercise-pictogram {
   display: flex;

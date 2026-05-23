@@ -97,6 +97,7 @@ db.exec(`
 for (const stmt of [
   'ALTER TABLE profile ADD COLUMN lieu TEXT',
   'ALTER TABLE profile ADD COLUMN user_id INTEGER',
+  'ALTER TABLE profile ADD COLUMN annee_naissance INTEGER',
   'ALTER TABLE measurements ADD COLUMN user_id INTEGER',
   'ALTER TABLE measurements ADD COLUMN tour_bras_gauche_cm REAL',
   'ALTER TABLE measurements ADD COLUMN tour_bras_droit_cm REAL',
@@ -143,6 +144,9 @@ db.exec(`
   const row = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='profile'").get();
   if (row && /CHECK\s*\(\s*id\s*=\s*1\s*\)/i.test(row.sql)) {
     console.log('→ Migration: profile table rebuilt for multi-user schema.');
+    // Preserve annee_naissance only if the legacy table already had it
+    const cols = db.prepare("PRAGMA table_info(profile)").all().map(c => c.name);
+    const hasAN = cols.includes('annee_naissance');
     db.exec(`
       BEGIN;
       ALTER TABLE profile RENAME TO profile_legacy;
@@ -151,6 +155,7 @@ db.exec(`
         user_id INTEGER UNIQUE,
         nom TEXT,
         age INTEGER,
+        annee_naissance INTEGER,
         sexe TEXT,
         taille_cm REAL,
         niveau TEXT,
@@ -162,8 +167,8 @@ db.exec(`
         preferences_alim TEXT,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
-      INSERT INTO profile (user_id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim, updated_at)
-        SELECT user_id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim, updated_at FROM profile_legacy;
+      INSERT INTO profile (user_id, nom, age, ${hasAN ? 'annee_naissance, ' : ''}sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim, updated_at)
+        SELECT user_id, nom, age, ${hasAN ? 'annee_naissance, ' : ''}sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim, updated_at FROM profile_legacy;
       DROP TABLE profile_legacy;
       COMMIT;
     `);
@@ -421,8 +426,18 @@ function getRecentWorkouts(userId, limit = 10) {
 }
 
 function buildContextSummary(userId) {
+  const profile = getProfile(userId);
+  if (profile) {
+    // Derive an always-up-to-date age from the year of birth when available;
+    // fall back to whatever the user typed in the legacy "age" field.
+    if (profile.annee_naissance) {
+      profile.age_calcule = new Date().getFullYear() - profile.annee_naissance;
+    } else if (profile.age) {
+      profile.age_calcule = profile.age;
+    }
+  }
   return {
-    profile: getProfile(userId),
+    profile,
     measurements: getRecentMeasurements(userId, 8),
     workouts: getRecentWorkouts(userId, 8),
   };
@@ -439,24 +454,26 @@ app.post('/api/profile', (req, res) => {
   if (existing) {
     db.prepare(`
       UPDATE profile SET
-        nom=@nom, age=@age, sexe=@sexe, taille_cm=@taille_cm, niveau=@niveau,
+        nom=@nom, age=@age, annee_naissance=@annee_naissance, sexe=@sexe, taille_cm=@taille_cm, niveau=@niveau,
         objectif=@objectif, frequence_hebdo=@frequence_hebdo, lieu=@lieu, equipement=@equipement,
         contraintes=@contraintes, preferences_alim=@preferences_alim, updated_at=CURRENT_TIMESTAMP
       WHERE user_id=@user_id
     `).run({
       user_id: req.userId,
-      nom: p.nom ?? null, age: p.age ?? null, sexe: p.sexe ?? null, taille_cm: p.taille_cm ?? null,
+      nom: p.nom ?? null, age: p.age ?? null, annee_naissance: p.annee_naissance ?? null,
+      sexe: p.sexe ?? null, taille_cm: p.taille_cm ?? null,
       niveau: p.niveau ?? null, objectif: p.objectif ?? null, frequence_hebdo: p.frequence_hebdo ?? null,
       lieu: p.lieu ?? null, equipement: p.equipement ?? null, contraintes: p.contraintes ?? null,
       preferences_alim: p.preferences_alim ?? null,
     });
   } else {
     db.prepare(`
-      INSERT INTO profile (user_id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim)
-      VALUES (@user_id, @nom, @age, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @lieu, @equipement, @contraintes, @preferences_alim)
+      INSERT INTO profile (user_id, nom, age, annee_naissance, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim)
+      VALUES (@user_id, @nom, @age, @annee_naissance, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @lieu, @equipement, @contraintes, @preferences_alim)
     `).run({
       user_id: req.userId,
-      nom: p.nom ?? null, age: p.age ?? null, sexe: p.sexe ?? null, taille_cm: p.taille_cm ?? null,
+      nom: p.nom ?? null, age: p.age ?? null, annee_naissance: p.annee_naissance ?? null,
+      sexe: p.sexe ?? null, taille_cm: p.taille_cm ?? null,
       niveau: p.niveau ?? null, objectif: p.objectif ?? null, frequence_hebdo: p.frequence_hebdo ?? null,
       lieu: p.lieu ?? null, equipement: p.equipement ?? null, contraintes: p.contraintes ?? null,
       preferences_alim: p.preferences_alim ?? null,
@@ -840,12 +857,13 @@ app.post('/api/import', (req, res) => {
     if (data.profile && typeof data.profile === 'object') {
       const p = data.profile;
       db.prepare(`
-        INSERT INTO profile (user_id, nom, age, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim)
-        VALUES (@user_id, @nom, @age, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @lieu, @equipement, @contraintes, @preferences_alim)
+        INSERT INTO profile (user_id, nom, age, annee_naissance, sexe, taille_cm, niveau, objectif, frequence_hebdo, lieu, equipement, contraintes, preferences_alim)
+        VALUES (@user_id, @nom, @age, @annee_naissance, @sexe, @taille_cm, @niveau, @objectif, @frequence_hebdo, @lieu, @equipement, @contraintes, @preferences_alim)
       `).run({
         user_id: req.userId,
         nom: p.nom ?? null,
         age: p.age ?? null,
+        annee_naissance: p.annee_naissance ?? null,
         sexe: p.sexe ?? null,
         taille_cm: p.taille_cm ?? null,
         niveau: p.niveau ?? null,

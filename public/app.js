@@ -99,6 +99,17 @@ async function checkHealth() {
 }
 
 // --- PROFILE ---
+function refreshComputedAge() {
+  const el = document.getElementById('computed-age');
+  if (!el) return;
+  const year = parseInt(document.querySelector('#profile-form [name=annee_naissance]')?.value, 10);
+  if (year && year > 1900 && year <= new Date().getFullYear()) {
+    el.textContent = `${new Date().getFullYear() - year} ans`;
+  } else {
+    el.textContent = '';
+  }
+}
+
 async function loadProfile() {
   const p = await api('/api/profile');
   if (!p) return;
@@ -107,12 +118,25 @@ async function loadProfile() {
     const input = form.elements[key];
     if (input && val != null) input.value = val;
   }
+  // Backward-compat: if only the legacy "age" is stored, derive an
+  // approximate year of birth so the user sees something pre-filled.
+  const yearInput = form.elements['annee_naissance'];
+  if (yearInput && !yearInput.value && p.age) {
+    yearInput.value = new Date().getFullYear() - p.age;
+  }
+  refreshComputedAge();
 }
+
+document.addEventListener('input', (e) => {
+  if (e.target?.name === 'annee_naissance') refreshComputedAge();
+});
 
 $('#profile-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = formDataToObject(e.target);
-  data.age = num(data.age);
+  data.annee_naissance = num(data.annee_naissance);
+  // Derive age from year of birth so legacy code paths still get a value
+  data.age = data.annee_naissance ? (new Date().getFullYear() - data.annee_naissance) : null;
   data.taille_cm = num(data.taille_cm);
   data.frequence_hebdo = num(data.frequence_hebdo);
   try {

@@ -51,8 +51,9 @@
         <label>Nom / pseudo
           <input name="nom" type="text" />
         </label>
-        <label>Âge
-          <input name="age" type="number" min="10" max="100" />
+        <label>Année de naissance
+          <input name="annee_naissance" type="number" min="1920" max="2020" placeholder="Ex: 1985" />
+          <span class="hint computed-age" id="computed-age"></span>
         </label>
         <label>Sexe
           <select name="sexe">
