@@ -1139,15 +1139,69 @@ $('#chat-btn').addEventListener('click', async () => {
 // --- PLANS ---
 let currentFilter = 'all';
 
-// Extract a ```coach-plan-json``` block emitted by the AI, return { exercises }
-// or null. Also strips that block from the markdown so it's not displayed.
+// Extract a structured exercises block from a workout plan's markdown.
+// Tolerant of how the LLM actually formatted it: tries the explicit
+// coach-plan-json fence first, then any JSON-shaped code block with an
+// "exercises" array, then a raw JSON object anywhere in the text.
+// Returns { exercises, cleaned } — cleaned has the JSON portion + the
+// "coach-plan-json" heading stripped so it's not displayed to the user.
 function extractPlanJSON(markdown) {
-  const re = /```coach-plan-json\s*([\s\S]*?)```/i;
-  const m = markdown.match(re);
-  if (!m) return { exercises: null, cleaned: markdown };
-  let parsed = null;
-  try { parsed = JSON.parse(m[1].trim()); } catch (e) { console.warn('Plan JSON parse failed:', e); }
-  return { exercises: parsed?.exercises || null, cleaned: markdown.replace(re, '').trim() };
+  if (!markdown) return { exercises: null, cleaned: markdown };
+
+  function tryParse(s) {
+    try {
+      const p = JSON.parse(s);
+      return Array.isArray(p?.exercises) ? p.exercises : null;
+    } catch { return null; }
+  }
+
+  // Always strip a stray "coach-plan-json" heading or label
+  let cleaned = markdown
+    .replace(/^\s*#{1,6}\s*coach-plan-json.*$/gim, '')
+    .replace(/^\s*\*+coach-plan-json\*+\s*$/gim, '');
+
+  // 1) Explicit fence ```coach-plan-json ... ```
+  let re = /```coach-plan-json\s*([\s\S]*?)```/i;
+  let m = cleaned.match(re);
+  if (m) {
+    const exs = tryParse(m[1].trim());
+    if (exs) return { exercises: exs, cleaned: cleaned.replace(re, '').trim() };
+  }
+
+  // 2) Any fenced block (with or without lang) that parses to { exercises: [...] }
+  re = /```(?:json|coach-plan-json)?\s*(\{[\s\S]*?"exercises"[\s\S]*?\})\s*```/gi;
+  let match;
+  while ((match = re.exec(cleaned)) !== null) {
+    const exs = tryParse(match[1].trim());
+    if (exs) {
+      const stripped = cleaned.slice(0, match.index) + cleaned.slice(match.index + match[0].length);
+      return { exercises: exs, cleaned: stripped.trim() };
+    }
+  }
+
+  // 3) Raw JSON object containing "exercises" anywhere in the text
+  const startIdx = cleaned.search(/\{\s*"exercises"/);
+  if (startIdx >= 0) {
+    // Find matching brace
+    let depth = 0;
+    for (let i = startIdx; i < cleaned.length; i++) {
+      if (cleaned[i] === '{') depth++;
+      else if (cleaned[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          const candidate = cleaned.slice(startIdx, i + 1);
+          const exs = tryParse(candidate);
+          if (exs) {
+            const stripped = cleaned.slice(0, startIdx) + cleaned.slice(i + 1);
+            return { exercises: exs, cleaned: stripped.trim() };
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  return { exercises: null, cleaned };
 }
 
 async function loadPlans() {

@@ -797,7 +797,14 @@ ${JSON.stringify(ctx.workouts, null, 2)}
 - Conclus par 2-3 indicateurs de progression à suivre pour la prochaine séance
 
 # Format de sortie OBLIGATOIRE
-À la TOUTE FIN de ta réponse (après l'analyse, les conseils et les indicateurs de progression), ajoute un bloc structuré identifié par le tag \`coach-plan-json\`. Ce bloc liste TOUS les exercices du bloc principal (PAS les échauffements ni les retours au calme) sous forme JSON :
+À la TOUTE FIN de ta réponse, ajoute un bloc structuré JSON. CRUCIAL :
+
+- N'écris PAS de titre, de paragraphe ou de phrase autour du bloc.
+- N'utilise PAS "coach-plan-json" comme titre Markdown (\`#\`, \`##\`, etc.)
+- Mets exactement trois backticks suivis du langage \`coach-plan-json\`, puis le JSON, puis trois backticks de fermeture.
+- Le JSON doit être valide et contenir une clé \`exercises\` qui est un tableau.
+
+Exemple EXACT du format attendu (recopie cette structure) :
 
 \`\`\`coach-plan-json
 {
@@ -816,6 +823,8 @@ ${JSON.stringify(ctx.workouts, null, 2)}
 }
 \`\`\`
 
+Liste TOUS les exercices du bloc principal (PAS les échauffements ni les retours au calme).
+
 Règles pour le JSON :
 - groupe_musculaire : pectoraux, dos, epaules, biceps, triceps, avant_bras, quadriceps, ischios, fessiers, mollets, adducteurs, abdos, cardio, sport_global
 - type_equipement : machine_assistee, poulie, poids_libre, poids_corps, cardio, sport
@@ -827,7 +836,7 @@ Règles pour le JSON :
 
 Pour un exercice cardio/sport, omets series/repetitions/charge_kg et ajoute plutôt duree_min, distance_km, vitesse_kmh selon ce qui s'applique.
 
-Ce bloc JSON ne sera pas affiché à l'utilisateur — il sert à pré-remplir le formulaire d'entraînement.`;
+Ce bloc JSON sera utilisé par l'application pour pré-remplir le formulaire d'entraînement — il ne sera pas affiché à l'utilisateur.`;
 
     const text = await callLLM(COACH_SYSTEM, userPrompt);
     const titre = `Séance — ${new Date().toLocaleDateString('fr-FR')} (${focus})`;
