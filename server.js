@@ -668,7 +668,17 @@ Notes sur les données :
 - groupe_musculaire "cardio" = exercice cardio pur (tapis à allure modérée, vélo droit, rameur en endurance…)
 - groupe_musculaire "sport_global" = activité sportive sollicitant tout le corps (natation, vélo extérieur, badminton, randonnée…). Ces séances comptent comme entraînement complet, pas comme du simple cardio. Évalue les apports caloriques et la récupération en conséquence.
 - type_equipement "sport" = activité hors salle ; les champs durée/distance/vitesse sont remplis, mais pas séries/reps/charge.
-- Les mensurations contiennent désormais tour_bras_gauche_cm / tour_bras_droit_cm, tour_cuisse_gauche_cm / tour_cuisse_droit_cm et tour_mollet_gauche_cm / tour_mollet_droit_cm. Un écart > 1 cm entre les côtés signale un déséquilibre à corriger via du travail unilatéral du côté faible. Les anciens champs tour_bras_cm et tour_cuisse_cm sont conservés pour la rétrocompatibilité ; privilégie les valeurs gauche/droite quand elles sont présentes.`;
+- Les mensurations contiennent désormais tour_bras_gauche_cm / tour_bras_droit_cm, tour_cuisse_gauche_cm / tour_cuisse_droit_cm et tour_mollet_gauche_cm / tour_mollet_droit_cm. Un écart > 1 cm entre les côtés signale un déséquilibre à corriger via du travail unilatéral du côté faible. Les anciens champs tour_bras_cm et tour_cuisse_cm sont conservés pour la rétrocompatibilité ; privilégie les valeurs gauche/droite quand elles sont présentes.
+
+## Règle obligatoire pour CHAQUE exercice proposé
+Quand tu cites un exercice (en générant une séance, en répondant à une question, en analysant la progression), tu dois TOUJOURS indiquer entre parenthèses en italique les groupes musculaires principaux qu'il sollicite, immédiatement après le nom de l'exercice.
+
+Exemples :
+- **Développé couché barre** *(pectoraux, triceps, épaules antérieures)* — 4 × 8 reps @ 70 kg, repos 2 min
+- **Tirage horizontal poulie** *(dos, biceps, trapèzes)* — 3 × 12 reps
+- **Squat barre** *(quadriceps, fessiers, core)* — 4 × 6 reps @ 80 kg
+
+Utilise les noms français standards : pectoraux, dos, épaules (antérieures/latérales/postérieures), biceps, triceps, avant-bras, quadriceps, ischios, fessiers, mollets, adducteurs, abdos/core. Liste les muscles dans l'ordre d'importance (principal en premier).`;
 
 function environmentBlock(profile) {
   if (!profile) return '';
