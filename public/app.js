@@ -1,6 +1,53 @@
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+// === Theme (light/dark) ===
+const THEME_KEY = 'coach-ia-theme';
+function applyTheme(t) {
+  document.body.classList.toggle('light-theme', t === 'light');
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'light' ? '#f5f7fa' : '#0f1419');
+}
+applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+document.addEventListener('click', (e) => {
+  if (e.target?.id === 'theme-toggle') {
+    const next = (localStorage.getItem(THEME_KEY) === 'light') ? 'dark' : 'light';
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  }
+});
+
+// === Plate calculator ===
+function renderPlateResult() {
+  const target = parseFloat(document.getElementById('plate-target')?.value);
+  const bar = parseFloat(document.getElementById('plate-bar')?.value) || 20;
+  const availStr = document.getElementById('plate-avail')?.value || '';
+  const out = document.getElementById('plate-result');
+  if (!out) return;
+  if (!target || target < bar) { out.innerHTML = '<em class="empty">Saisir un poids ≥ poids de la barre.</em>'; return; }
+  const avail = availStr.split(/[,;\s]+/).map(s => parseFloat(s)).filter(n => Number.isFinite(n) && n > 0).sort((a, b) => b - a);
+  const perSide = (target - bar) / 2;
+  if (perSide < 0) { out.innerHTML = '<em class="empty">Le poids cible est inférieur à la barre.</em>'; return; }
+  // Greedy: use largest plate that fits, repeat. Allow duplicates.
+  let remaining = perSide;
+  const plates = [];
+  for (const p of avail) {
+    while (remaining >= p - 1e-6) { plates.push(p); remaining -= p; }
+  }
+  const fit = Math.abs(remaining) < 1e-6;
+  const summary = plates.length
+    ? plates.map(p => `<span class="plate">${p}</span>`).join('')
+    : '<em>Aucune plaque (barre seule)</em>';
+  out.innerHTML = `
+    <div><strong>De chaque côté :</strong> ${summary}</div>
+    <p class="hint">${fit
+      ? `Total : ${bar} kg (barre) + 2 × ${plates.reduce((a, b) => a + b, 0)} kg = <strong>${target} kg</strong> ✓`
+      : `⚠️ Pas exact avec ces plaques. Plus proche atteignable : <strong>${bar + 2 * plates.reduce((a, b) => a + b, 0)} kg</strong> (manque ${(remaining * 2).toFixed(2)} kg)`}</p>
+  `;
+}
+document.addEventListener('input', (e) => {
+  if (['plate-target', 'plate-bar', 'plate-avail'].includes(e.target?.id)) renderPlateResult();
+});
+
 const loader = $('#loader');
 const loaderText = $('#loader-text');
 function showLoader(text = 'Le coach réfléchit…') {
@@ -58,7 +105,7 @@ $$('.tab').forEach(btn => {
     $$('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     $(`#tab-${btn.dataset.tab}`).classList.add('active');
-    if (btn.dataset.tab === 'progression') { renderCharts(); renderExerciseRecords(); }
+    if (btn.dataset.tab === 'progression') { renderCharts(); renderExerciseRecords(); renderWeeklySummary(); }
     if (btn.dataset.tab === 'plans') loadPlans();
     if (btn.dataset.tab === 'mesures') loadMeasurements();
     if (btn.dataset.tab === 'entrainements') loadWorkouts();
@@ -126,6 +173,95 @@ async function loadProfile() {
   }
   refreshComputedAge();
   await renderEnergyProfile(p);
+  renderAchievements();
+}
+
+// === Streak + badges ===
+// Compute longest current streak (consecutive days with ≥ 1 workout, going
+// backwards from today; "today" is forgiving — counts only if you already
+// trained, otherwise we start from yesterday).
+function computeStreak(workouts) {
+  if (!workouts.length) return { current: 0, longest: 0, totalDays: 0 };
+  const dates = new Set(workouts.map(w => w.date));
+  // Current streak
+  let current = 0;
+  const start = new Date();
+  // If user didn't train today yet, start counting from yesterday
+  if (!dates.has(start.toISOString().slice(0, 10))) start.setDate(start.getDate() - 1);
+  for (let d = new Date(start); ; d.setDate(d.getDate() - 1)) {
+    if (dates.has(d.toISOString().slice(0, 10))) current++;
+    else break;
+    if (current > 365) break;
+  }
+  // Longest streak (scan all sorted dates)
+  const sorted = [...dates].sort();
+  let longest = 0, run = 0, prev = null;
+  for (const ds of sorted) {
+    if (prev) {
+      const diff = (new Date(ds) - new Date(prev)) / 86400000;
+      run = diff === 1 ? run + 1 : 1;
+    } else { run = 1; }
+    if (run > longest) longest = run;
+    prev = ds;
+  }
+  return { current, longest, totalDays: dates.size };
+}
+
+function computeBadges(workouts, records) {
+  const out = [];
+  const streak = computeStreak(workouts);
+  const totalSessions = workouts.length;
+  // Find max charge across all exercises in records
+  let maxOverallCharge = 0;
+  for (const r of (records || [])) {
+    if (r.allTimeMaxCharge && r.allTimeMaxCharge > maxOverallCharge) maxOverallCharge = r.allTimeMaxCharge;
+  }
+  const recentPRs = (records || []).filter(r => r.recentPR).length;
+
+  const tiers = [
+    { check: () => streak.current >= 3, label: 'Série de 3 jours', emoji: '🔥' },
+    { check: () => streak.current >= 7, label: 'Une semaine ininterrompue', emoji: '🔥🔥' },
+    { check: () => streak.longest >= 14, label: 'Série record : 2 semaines', emoji: '⚡' },
+    { check: () => streak.longest >= 30, label: 'Série record : 1 mois', emoji: '🚀' },
+    { check: () => totalSessions >= 1, label: 'Première séance', emoji: '🎯' },
+    { check: () => totalSessions >= 10, label: '10 séances', emoji: '🏃' },
+    { check: () => totalSessions >= 50, label: '50 séances', emoji: '🏆' },
+    { check: () => totalSessions >= 100, label: '100 séances', emoji: '🏅' },
+    { check: () => totalSessions >= 250, label: '250 séances — fanatique', emoji: '💎' },
+    { check: () => maxOverallCharge >= 50, label: 'Premier 50 kg soulevé', emoji: '💪' },
+    { check: () => maxOverallCharge >= 100, label: 'Premier 100 kg soulevé', emoji: '🦾' },
+    { check: () => maxOverallCharge >= 150, label: '150 kg, sérieux', emoji: '🐘' },
+    { check: () => maxOverallCharge >= 200, label: '200 kg, monstre', emoji: '🦏' },
+    { check: () => recentPRs >= 1, label: `PR récent (${recentPRs}) cette quinzaine`, emoji: '🎉' },
+  ];
+  for (const t of tiers) {
+    try { if (t.check()) out.push({ label: t.label, emoji: t.emoji }); } catch {}
+  }
+  return { badges: out, streak, totalSessions };
+}
+
+async function renderAchievements() {
+  const body = document.getElementById('achievements-body');
+  if (!body) return;
+  let workouts = [];
+  try { workouts = await api('/api/workouts'); } catch { return; }
+  const records = computeExerciseRecords(workouts);
+  const { badges, streak, totalSessions } = computeBadges(workouts, records);
+  if (totalSessions === 0) {
+    body.innerHTML = '<em class="empty">Enregistre une première séance pour débloquer tes accomplissements.</em>';
+    return;
+  }
+  const streakBlock = `
+    <div class="streak-line">
+      <span class="streak-flame">${streak.current >= 3 ? '🔥' : '·'}</span>
+      <span><strong>${streak.current}</strong> jour${streak.current > 1 ? 's' : ''} de série actuelle</span>
+      <span class="dim">· record : <strong>${streak.longest}</strong> j · ${totalSessions} séances au total</span>
+    </div>
+  `;
+  const badgesBlock = badges.length
+    ? `<div class="badges-grid">${badges.map(b => `<span class="badge">${b.emoji} ${b.label}</span>`).join('')}</div>`
+    : '<p class="hint">Continue, les badges arrivent !</p>';
+  body.innerHTML = streakBlock + badgesBlock;
 }
 
 async function renderEnergyProfile(profile) {
@@ -535,9 +671,58 @@ function addExerciseCard(data = {}) {
   if (data.groupe_musculaire || data.type_equipement) refreshExerciseList();
   refreshCardioMode();
   setupSetsProgress(card);
+  setupDragReorder(card);
   updateName();
   updateSessionSummary();
 }
+
+// === Drag-and-drop reorder of exercise cards ===
+function setupDragReorder(card) {
+  const handle = card.querySelector('.exercise-card-header');
+  if (!handle) return;
+  handle.setAttribute('draggable', 'true');
+  handle.title = (handle.title || '') + ' (glisser pour réorganiser)';
+  handle.addEventListener('dragstart', (e) => {
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+  });
+  handle.addEventListener('dragend', () => {
+    card.classList.remove('dragging');
+    document.querySelectorAll('.exercise-card.drag-over').forEach(c => c.classList.remove('drag-over'));
+    saveWorkoutDraft();
+    updateSessionSummary();
+  });
+}
+
+// Document-wide drop listener (attached once below)
+let _dragSetupDone = false;
+function ensureDragListeners() {
+  if (_dragSetupDone) return;
+  _dragSetupDone = true;
+  const list = document.getElementById('exercises-list');
+  if (!list) return;
+  list.addEventListener('dragover', (e) => {
+    const dragging = document.querySelector('.exercise-card.dragging');
+    if (!dragging) return;
+    e.preventDefault();
+    const cards = $$('.exercise-card:not(.dragging)', list);
+    const after = cards.find(c => {
+      const r = c.getBoundingClientRect();
+      return e.clientY < r.top + r.height / 2;
+    });
+    cards.forEach(c => c.classList.remove('drag-over'));
+    if (after) {
+      after.classList.add('drag-over');
+      list.insertBefore(dragging, after);
+    } else {
+      cards[cards.length - 1]?.classList.add('drag-over');
+      list.appendChild(dragging);
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', ensureDragListeners);
+setTimeout(ensureDragListeners, 0); // also for already-loaded DOM
 
 function readExerciseCard(card) {
   const customName = card.querySelector('.custom-name').value.trim();
@@ -1231,11 +1416,112 @@ function computeExerciseRecords(workouts) {
     e.lastSession = last;
     e.recentPR = last && last.date >= fortnightStr && (last.is_pr_charge || last.is_pr_volume);
     e.totalSessions = e.sessions.length;
+    // Plateau detection: last 3 sessions, none was a PR by charge OR volume
+    const tail = e.sessions.slice(-3);
+    e.plateau = tail.length >= 3 && tail.every(s => !s.is_pr_charge && !s.is_pr_volume);
+    if (e.plateau) {
+      const first = tail[0].date, lastD = tail[tail.length - 1].date;
+      const weeks = Math.max(1, Math.round((new Date(lastD) - new Date(first)) / (7 * 86400000)));
+      e.plateauWeeks = weeks;
+    }
     result.push(e);
   }
   // Sort: most-recently trained first
   result.sort((a, b) => (b.lastSession?.date || '').localeCompare(a.lastSession?.date || ''));
   return result;
+}
+
+// === In-app reminders ===
+async function maybeShowReminders() {
+  const banner = document.getElementById('reminder-banner');
+  if (!banner) return;
+  // Don't re-show if user dismissed today
+  const dismissedKey = 'coach-ia-reminder-dismissed';
+  const today = new Date().toISOString().slice(0, 10);
+  if (localStorage.getItem(dismissedKey) === today) return;
+
+  const reminders = [];
+  try {
+    const workouts = await api('/api/workouts');
+    if (workouts.length) {
+      const last = workouts[0]; // already sorted desc by date
+      const days = Math.floor((Date.now() - new Date(last.date).getTime()) / 86400000);
+      if (days >= 3) reminders.push(`💪 Ça fait ${days} jours sans séance. Une petite séance aujourd'hui ?`);
+    }
+  } catch {}
+  try {
+    const ms = await api('/api/measurements');
+    if (ms.length) {
+      const lastW = ms.slice().reverse().find(m => m.poids_kg != null);
+      if (lastW) {
+        const days = Math.floor((Date.now() - new Date(lastW.date).getTime()) / 86400000);
+        if (days >= 14) reminders.push(`⚖️ Aucune pesée depuis ${days} jours. Un point régulier aide à suivre la progression.`);
+      }
+    } else {
+      reminders.push('⚖️ Pense à enregistrer ton poids pour suivre ta progression.');
+    }
+  } catch {}
+
+  if (!reminders.length) { banner.classList.add('hidden'); return; }
+  banner.innerHTML = `
+    <div class="reminder-content">${reminders.join('<br>')}</div>
+    <button type="button" id="dismiss-reminder" class="reminder-dismiss" title="Masquer pour aujourd'hui">×</button>
+  `;
+  banner.classList.remove('hidden');
+  document.getElementById('dismiss-reminder')?.addEventListener('click', () => {
+    localStorage.setItem(dismissedKey, today);
+    banner.classList.add('hidden');
+  });
+}
+
+async function renderWeeklySummary() {
+  const body = document.getElementById('weekly-summary-body');
+  if (!body) return;
+  let workouts = [];
+  try { workouts = await api('/api/workouts'); } catch { return; }
+  const since = new Date(); since.setDate(since.getDate() - 7);
+  const sinceStr = since.toISOString().slice(0, 10);
+  const week = workouts.filter(w => w.date >= sinceStr);
+  if (!week.length) {
+    body.innerHTML = '<p class="empty">Aucune séance cette semaine. Une bonne semaine commence souvent un lundi 💪</p>';
+    return;
+  }
+  let tonnage = 0, totalDuration = 0, totalRessenti = 0, ressentiCount = 0;
+  const muscleCount = {};
+  for (const w of week) {
+    if (w.duree_min) totalDuration += w.duree_min;
+    if (w.ressenti) { totalRessenti += w.ressenti; ressentiCount++; }
+    for (const ex of (w.exercises || [])) {
+      const m = ex.groupe_musculaire;
+      if (m) muscleCount[m] = (muscleCount[m] || 0) + 1;
+      let sd = null;
+      if (ex.series_details) {
+        try { sd = typeof ex.series_details === 'string' ? JSON.parse(ex.series_details) : ex.series_details; } catch {}
+      }
+      if (Array.isArray(sd) && sd.length) {
+        for (const s of sd) tonnage += (s.reps || 0) * (s.charge || 0);
+      } else if (ex.series && ex.charge_kg) {
+        const m = String(ex.repetitions || '').match(/(\d+)/);
+        const reps = m ? parseInt(m[1], 10) : 0;
+        tonnage += ex.series * reps * ex.charge_kg;
+      }
+    }
+  }
+  const topMuscle = Object.entries(muscleCount).sort((a, b) => b[1] - a[1])[0];
+  const records = computeExerciseRecords(workouts);
+  const weeklyPRs = records.filter(r => r.lastSession && r.lastSession.date >= sinceStr && (r.lastSession.is_pr_charge || r.lastSession.is_pr_volume));
+
+  body.innerHTML = `
+    <div class="summary-grid">
+      <div><span class="summary-label">Séances</span><span class="summary-value">${week.length}</span></div>
+      <div><span class="summary-label">Durée totale</span><span class="summary-value">${totalDuration} min</span></div>
+      <div><span class="summary-label">Tonnage</span><span class="summary-value">${Math.round(tonnage)} kg</span></div>
+      <div><span class="summary-label">Ressenti moyen</span><span class="summary-value">${ressentiCount ? (totalRessenti / ressentiCount).toFixed(1) : '—'} /10</span></div>
+      <div><span class="summary-label">Muscle dominant</span><span class="summary-value">${topMuscle ? topMuscle[0] : '—'}</span></div>
+      <div><span class="summary-label">PRs cette semaine</span><span class="summary-value">${weeklyPRs.length}</span></div>
+    </div>
+    ${weeklyPRs.length ? `<p class="hint" style="margin-top:0.7rem">🏆 ${weeklyPRs.map(r => r.name).join(' · ')}</p>` : ''}
+  `;
 }
 
 async function renderExerciseRecords() {
@@ -1254,7 +1540,9 @@ async function renderExerciseRecords() {
     const summary = isCardio
       ? `${e.totalSessions} séances · meilleur ${Math.round(e.allTimeMaxVolume)} min cumul`
       : `${e.totalSessions} séances · record ${e.allTimeMaxCharge ?? '?'} kg`;
-    const badge = e.recentPR ? '<span class="pr-badge">🏆 PR récent</span>' : '';
+    const prBadge = e.recentPR ? '<span class="pr-badge">🏆 PR récent</span>' : '';
+    const platBadge = e.plateau ? `<span class="plateau-badge" title="Pas de PR depuis ${e.plateauWeeks} semaine(s) → essaie de varier (tempo, +reps, deload, ou variante)">⚠️ Stagne ${e.plateauWeeks} sem.</span>` : '';
+    const badge = prBadge + platBadge;
     return `
       <details class="ex-record" data-i="${i}">
         <summary>
@@ -1928,6 +2216,9 @@ if (changePwForm) {
   await loadProfile();
   await loadMeasurements();
   await loadWorkouts();
+  maybeShowReminders();
+  ensureDragListeners();
+  renderPlateResult();
 
   // Now that currentUser is known, restore any in-progress workout draft.
   // If none, start with a fresh empty exercise card as before.
