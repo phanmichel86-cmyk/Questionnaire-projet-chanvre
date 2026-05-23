@@ -1088,9 +1088,19 @@ $('#analyze-btn').addEventListener('click', async () => {
 });
 
 // --- COACH AI ---
-async function displayCoachOutput(text) {
+async function displayCoachOutput(text, plan = null) {
   const out = $('#coach-output');
-  out.innerHTML = marked.parse(text);
+  // Always strip the structured plan JSON block so it never leaks to the UI
+  const { exercises, cleaned } = extractPlanJSON(text);
+  out.innerHTML = marked.parse(cleaned);
+  if (plan && exercises && exercises.length) {
+    const startBtn = document.createElement('button');
+    startBtn.className = 'primary';
+    startBtn.style.marginTop = '1rem';
+    startBtn.textContent = '🏋️ Démarrer cette séance';
+    startBtn.addEventListener('click', () => startPlannedSession(plan, exercises));
+    out.appendChild(startBtn);
+  }
   out.classList.remove('hidden');
   out.scrollIntoView({ behavior: 'smooth' });
 }
@@ -1105,7 +1115,7 @@ $('#gen-workout-btn').addEventListener('click', async () => {
         duree_min: num($('#workout-duree').value),
       },
     });
-    displayCoachOutput(`# ${r.titre}\n\n${r.contenu}`);
+    displayCoachOutput(`# ${r.titre}\n\n${r.contenu}`, r);
   } catch (err) { alert('Erreur : ' + err.message); }
   finally { hideLoader(); }
 });
