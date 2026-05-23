@@ -794,7 +794,40 @@ ${JSON.stringify(ctx.workouts, null, 2)}
 - Analyse ma progression et adapte la difficulté en conséquence
 - Si possible, varie les exercices par rapport aux séances récentes
 - Structure : Échauffement → Bloc principal (exercices avec séries × reps × charge ou tempo, repos) → Retour au calme
-- Conclus par 2-3 indicateurs de progression à suivre pour la prochaine séance`;
+- Conclus par 2-3 indicateurs de progression à suivre pour la prochaine séance
+
+# Format de sortie OBLIGATOIRE
+À la TOUTE FIN de ta réponse (après l'analyse, les conseils et les indicateurs de progression), ajoute un bloc structuré identifié par le tag \`coach-plan-json\`. Ce bloc liste TOUS les exercices du bloc principal (PAS les échauffements ni les retours au calme) sous forme JSON :
+
+\`\`\`coach-plan-json
+{
+  "exercises": [
+    {
+      "nom": "Développé couché barre",
+      "groupe_musculaire": "pectoraux",
+      "type_equipement": "poids_libre",
+      "series": 4,
+      "repetitions": "8-10",
+      "charge_kg": 70,
+      "repos_sec": 120,
+      "notes": "tempo 3-1-1 contrôlé"
+    }
+  ]
+}
+\`\`\`
+
+Règles pour le JSON :
+- groupe_musculaire : pectoraux, dos, epaules, biceps, triceps, avant_bras, quadriceps, ischios, fessiers, mollets, adducteurs, abdos, cardio, sport_global
+- type_equipement : machine_assistee, poulie, poids_libre, poids_corps, cardio, sport
+- series : nombre (peut être null si cardio)
+- repetitions : chaîne (ex: "8", "8-10", "AMRAP", null si cardio)
+- charge_kg : nombre en kg (peut être null pour poids du corps)
+- repos_sec : nombre en secondes
+- notes : tempo ou consigne courte, ou null
+
+Pour un exercice cardio/sport, omets series/repetitions/charge_kg et ajoute plutôt duree_min, distance_km, vitesse_kmh selon ce qui s'applique.
+
+Ce bloc JSON ne sera pas affiché à l'utilisateur — il sert à pré-remplir le formulaire d'entraînement.`;
 
     const text = await callLLM(COACH_SYSTEM, userPrompt);
     const titre = `Séance — ${new Date().toLocaleDateString('fr-FR')} (${focus})`;

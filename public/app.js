@@ -323,6 +323,10 @@ function addExerciseCard(data = {}) {
 
   card.innerHTML = `
     <div class="exercise-card-header">
+      <label class="done-toggle" title="Marquer comme fait">
+        <input type="checkbox" class="exercise-done" ${data.done ? 'checked' : ''} />
+        <span class="done-label">Fait</span>
+      </label>
       <span class="exercise-number">${idx}.</span>
       <span class="exercise-name">${data.nom || 'Nouvel exercice'}</span>
       <button type="button" class="danger" data-remove>×</button>
@@ -505,6 +509,15 @@ function addExerciseCard(data = {}) {
   // Listen to all inputs that affect the summary
   card.querySelectorAll('.series, .reps, .charge, .cardio-duree, .cardio-kcal').forEach(i => i.addEventListener('input', updateSessionSummary));
 
+  const doneCheckbox = card.querySelector('.exercise-done');
+  function refreshDoneState() {
+    card.classList.toggle('is-done', doneCheckbox.checked);
+    updateSessionSummary();
+    saveWorkoutDraft();
+  }
+  doneCheckbox.addEventListener('change', refreshDoneState);
+  if (data.done) card.classList.add('is-done');
+
   card.querySelector('[data-remove]').addEventListener('click', () => {
     card.remove();
     updateSessionSummary();
@@ -533,6 +546,7 @@ function readExerciseCard(card) {
   const groupe_musculaire = card.querySelector('.muscle-select').value || null;
   const type_equipement = card.querySelector('.equipment-select').value || null;
   const notes = card.querySelector('.notes').value || null;
+  const done = card.querySelector('.exercise-done')?.checked || false;
   const isCardio = type_equipement === 'cardio' || type_equipement === 'sport';
 
   if (isCardio) {
@@ -548,6 +562,7 @@ function readExerciseCard(card) {
       niveau_resistance: num(card.querySelector('.cardio-niveau').value),
       kcal_machine: num(card.querySelector('.cardio-kcal').value),
       notes,
+      done,
     };
   }
 
@@ -569,6 +584,7 @@ function readExerciseCard(card) {
       repos_sec: num(card.querySelector('.repos').value),
       series_details: rows,
       notes,
+      done,
     };
   }
 
@@ -582,12 +598,14 @@ function readExerciseCard(card) {
     repos_sec: num(card.querySelector('.repos').value),
     series_details: null,
     notes,
+    done,
   };
 }
 
 function computeSessionStats() {
   const cards = $$('.exercise-card');
   let nbExercices = 0;
+  let nbDone = 0;
   let totalSeries = 0;
   let totalReps = 0;
   let tonnage = 0;
@@ -599,6 +617,7 @@ function computeSessionStats() {
     const ex = readExerciseCard(card);
     if (!ex) continue;
     nbExercices++;
+    if (ex.done) nbDone++;
 
     if (ex.type_equipement === 'cardio' || ex.type_equipement === 'sport') {
       cardioMin += ex.duree_min || 0;
@@ -628,7 +647,7 @@ function computeSessionStats() {
     }
   }
 
-  return { nbExercices, totalSeries, totalReps, tonnage, cardioMin, cardioKcalMachine, cardioKm };
+  return { nbExercices, nbDone, totalSeries, totalReps, tonnage, cardioMin, cardioKcalMachine, cardioKm };
 }
 
 let cachedBodyweight = null;
@@ -660,6 +679,16 @@ function estimateKcal(durationMin, ressenti, bodyweightKg) {
 
 async function updateSessionSummary() {
   const stats = computeSessionStats();
+  const progressEl = $('#sum-progress');
+  if (progressEl) {
+    if (stats.nbExercices > 0) {
+      progressEl.textContent = `${stats.nbDone}/${stats.nbExercices}`;
+      progressEl.parentElement.classList.toggle('done-all', stats.nbDone === stats.nbExercices && stats.nbDone > 0);
+    } else {
+      progressEl.textContent = '0/0';
+      progressEl.parentElement.classList.remove('done-all');
+    }
+  }
   $('#sum-exercices').textContent = stats.nbExercices;
   $('#sum-series').textContent = stats.totalSeries;
   $('#sum-reps').textContent = Math.round(stats.totalReps);
@@ -1109,6 +1138,18 @@ $('#chat-btn').addEventListener('click', async () => {
 
 // --- PLANS ---
 let currentFilter = 'all';
+
+// Extract a ```coach-plan-json``` block emitted by the AI, return { exercises }
+// or null. Also strips that block from the markdown so it's not displayed.
+function extractPlanJSON(markdown) {
+  const re = /```coach-plan-json\s*([\s\S]*?)```/i;
+  const m = markdown.match(re);
+  if (!m) return { exercises: null, cleaned: markdown };
+  let parsed = null;
+  try { parsed = JSON.parse(m[1].trim()); } catch (e) { console.warn('Plan JSON parse failed:', e); }
+  return { exercises: parsed?.exercises || null, cleaned: markdown.replace(re, '').trim() };
+}
+
 async function loadPlans() {
   const all = await api('/api/plans');
   const filtered = currentFilter === 'all' ? all : all.filter(p => p.type === currentFilter);
@@ -1122,6 +1163,10 @@ async function loadPlans() {
     const card = document.createElement('div');
     card.className = 'plan-card';
     const icon = p.type === 'workout' ? '🏋️' : '🥗';
+    const { exercises, cleaned } = extractPlanJSON(p.contenu || '');
+    const startBtn = (p.type === 'workout' && exercises && exercises.length)
+      ? `<button class="primary" data-start-p="${p.id}">🏋️ Démarrer cette séance</button>`
+      : '';
     card.innerHTML = `
       <div class="plan-card-header">
         <div>
@@ -1129,10 +1174,11 @@ async function loadPlans() {
           <div class="plan-card-meta">${new Date(p.created_at).toLocaleString('fr-FR')}</div>
         </div>
         <div class="plan-card-actions">
+          ${startBtn}
           <button class="danger" data-del-p="${p.id}">Supprimer</button>
         </div>
       </div>
-      <div class="plan-card-body markdown">${marked.parse(p.contenu)}</div>
+      <div class="plan-card-body markdown">${marked.parse(cleaned)}</div>
     `;
     card.querySelector('.plan-card-header').addEventListener('click', (e) => {
       if (e.target.tagName === 'BUTTON') return;
@@ -1144,8 +1190,42 @@ async function loadPlans() {
       await api(`/api/plans/${p.id}`, { method: 'DELETE' });
       loadPlans();
     });
+    const startBtnEl = card.querySelector('[data-start-p]');
+    if (startBtnEl) {
+      startBtnEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        startPlannedSession(p, exercises);
+      });
+    }
     div.appendChild(card);
   }
+}
+
+function startPlannedSession(plan, exercises) {
+  // Warn if there's a non-empty in-progress draft
+  const existing = $$('.exercise-card');
+  const draftHasData = existing.some(c => readExerciseCard(c));
+  if (draftHasData) {
+    if (!confirm('Une séance est déjà en cours de saisie. Démarrer ce plan va la remplacer. Continuer ?')) return;
+  }
+
+  // Switch to the Entraînements tab
+  const tabBtn = document.querySelector('.tab[data-tab="entrainements"]');
+  if (tabBtn) tabBtn.click();
+
+  // Reset form and pre-fill from plan
+  const form = $('#workout-form');
+  form.reset();
+  form.date.value = new Date().toISOString().slice(0, 10);
+  form.nom.value = plan.titre || 'Séance planifiée';
+  $('#exercises-list').innerHTML = '';
+  exerciseCounter = 0;
+  for (const ex of exercises) addExerciseCard(ex);
+  updateSessionSummary();
+  saveWorkoutDraft();
+
+  // Scroll to top of the form
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 $$('.filter').forEach(b => {

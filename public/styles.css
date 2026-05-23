@@ -496,6 +496,41 @@ tr:last-child td { border-bottom: none; }
 .energy-cell.highlight .energy-value { color: var(--accent); }
 .energy-sub { font-size: 0.75rem; color: var(--text-dim); }
 
+/* === "Fait ✓" checkbox per exercise === */
+.done-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  margin-right: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  user-select: none;
+}
+.done-toggle input { margin: 0; }
+.done-toggle:hover { color: var(--text); }
+
+.exercise-card.is-done .exercise-name {
+  text-decoration: line-through;
+  color: var(--text-dim);
+}
+.exercise-card.is-done .exercise-card-body { opacity: 0.55; }
+.exercise-card.is-done .done-toggle {
+  background: rgba(63, 185, 80, 0.18);
+  border-color: #3fb950;
+  color: #3fb950;
+}
+
+/* Bilan: pulse when all exercises done */
+.summary-grid > div.done-all .summary-value {
+  color: #3fb950;
+  font-weight: 700;
+}
+
 /* === Body pictogram === */
 .exercise-pictogram {
   display: flex;
