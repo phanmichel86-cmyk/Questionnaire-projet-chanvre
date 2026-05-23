@@ -110,6 +110,12 @@ $$('.tab').forEach(btn => {
     if (btn.dataset.tab === 'mesures') loadMeasurements();
     if (btn.dataset.tab === 'entrainements') loadWorkouts();
     if (btn.dataset.tab === 'carte') renderBodyMap();
+    if (btn.dataset.tab === 'objectifs') { refreshGoalFormFields(); loadGoals(); }
+    if (btn.dataset.tab === 'nutrition') {
+      const d = $('#meal-date');
+      if (!d.value) d.value = todayStr();
+      loadMealsForDate(d.value);
+    }
     if (btn.dataset.tab === 'donnees') { updateDataStats(); updateBackupInfo(); }
   });
 });
@@ -1430,6 +1436,222 @@ function computeExerciseRecords(workouts) {
   result.sort((a, b) => (b.lastSession?.date || '').localeCompare(a.lastSession?.date || ''));
   return result;
 }
+
+// === GOALS ===
+function progressForGoal(goal, ctx) {
+  const { weights, records, weeklyAvgSessions } = ctx;
+  if (goal.achieved_at) return { pct: 100, current: goal.target_value, note: 'Atteint' };
+  if (goal.kind === 'weight' && goal.target_value != null) {
+    const current = weights[0]?.poids_kg ?? goal.start_value;
+    if (current == null || goal.start_value == null) return { pct: 0, current, note: 'Saisir un poids dans Mesures' };
+    const totalDistance = goal.target_value - goal.start_value;
+    const done = current - goal.start_value;
+    const pct = totalDistance === 0 ? 100 : Math.max(0, Math.min(100, (done / totalDistance) * 100));
+    return { pct, current, note: `${current} → ${goal.target_value} (départ ${goal.start_value})` };
+  }
+  if (goal.kind === 'exercise_charge' && goal.target_value != null && goal.target_exercise) {
+    const r = records.find(x => x.name.toLowerCase() === goal.target_exercise.toLowerCase());
+    const current = r?.allTimeMaxCharge ?? goal.start_value ?? 0;
+    const start = goal.start_value ?? 0;
+    const pct = goal.target_value === start ? 100 : Math.max(0, Math.min(100, ((current - start) / (goal.target_value - start)) * 100));
+    return { pct, current, note: `${current} kg → ${goal.target_value} kg` };
+  }
+  if (goal.kind === 'sessions_week' && goal.target_value != null) {
+    const current = weeklyAvgSessions;
+    const pct = Math.max(0, Math.min(100, (current / goal.target_value) * 100));
+    return { pct, current, note: `Moyenne actuelle : ${current.toFixed(1)} / sem.` };
+  }
+  return { pct: 0, current: null, note: 'Suivi manuel' };
+}
+
+async function loadGoals() {
+  const goals = await api('/api/goals');
+  const workouts = await api('/api/workouts');
+  const ms = await api('/api/measurements');
+  // Most recent first
+  const weights = ms.slice().reverse();
+  const records = computeExerciseRecords(workouts);
+  // Average sessions/week over last 4 weeks
+  const since = new Date(); since.setDate(since.getDate() - 28);
+  const recent = workouts.filter(w => new Date(w.date) >= since);
+  const weeklyAvgSessions = recent.length / 4;
+  const ctx = { weights, records, weeklyAvgSessions };
+
+  const renderGoal = (g) => {
+    const p = progressForGoal(g, ctx);
+    const kindIcon = { weight: '⚖️', exercise_charge: '💪', sessions_week: '📅', custom: '🎯' }[g.kind] || '🎯';
+    const deadline = g.target_date ? `<span class="dim">échéance ${g.target_date}</span>` : '';
+    const actions = g.achieved_at
+      ? `<button class="danger" data-del-goal="${g.id}">Suppr.</button>`
+      : `<button class="secondary" data-achieve-goal="${g.id}">✓ Marquer atteint</button>
+         <button class="danger" data-del-goal="${g.id}">Suppr.</button>`;
+    return `
+      <div class="goal-card">
+        <div class="goal-header">
+          <div>
+            <div class="goal-label">${kindIcon} ${g.label}</div>
+            <div class="goal-sub">${p.note} · ${deadline}</div>
+          </div>
+          <div class="goal-actions">${actions}</div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${p.pct.toFixed(0)}%"></div></div>
+        <div class="goal-pct">${p.pct.toFixed(0)}%</div>
+      </div>
+    `;
+  };
+
+  const active = goals.filter(g => !g.achieved_at);
+  const achieved = goals.filter(g => g.achieved_at);
+  $('#goals-active').innerHTML = active.length ? active.map(renderGoal).join('') : '<p class="empty">Aucun objectif en cours. Ajoute-en un pour commencer à suivre.</p>';
+  $('#goals-achieved').innerHTML = achieved.length ? achieved.map(renderGoal).join('') : '<p class="empty">Pas encore d\'objectifs atteints. Ça viendra 💪</p>';
+
+  $$('[data-del-goal]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Supprimer cet objectif ?')) return;
+    await api(`/api/goals/${b.dataset.delGoal}`, { method: 'DELETE' });
+    loadGoals();
+  }));
+  $$('[data-achieve-goal]').forEach(b => b.addEventListener('click', async () => {
+    await api(`/api/goals/${b.dataset.achieveGoal}/achieve`, { method: 'POST' });
+    loadGoals();
+  }));
+}
+
+// Show/hide form fields based on goal kind
+function refreshGoalFormFields() {
+  const form = document.getElementById('goal-form');
+  if (!form) return;
+  const kind = form.kind.value;
+  form.querySelector('.goal-field-target_exercise').classList.toggle('hidden', kind !== 'exercise_charge');
+  // Suggest unit
+  if (kind === 'weight') form.target_unit.value = 'kg';
+  else if (kind === 'exercise_charge') form.target_unit.value = 'kg';
+  else if (kind === 'sessions_week') form.target_unit.value = 'séances/sem.';
+}
+document.addEventListener('change', (e) => {
+  if (e.target?.name === 'kind' && e.target.closest('#goal-form')) refreshGoalFormFields();
+});
+document.addEventListener('submit', async (e) => {
+  if (e.target?.id !== 'goal-form') return;
+  e.preventDefault();
+  const data = formDataToObject(e.target);
+  data.target_value = num(data.target_value);
+  data.start_value = num(data.start_value);
+  try {
+    await api('/api/goals', { method: 'POST', body: data });
+    e.target.reset();
+    refreshGoalFormFields();
+    loadGoals();
+  } catch (err) { alert('Erreur : ' + err.message); }
+});
+
+// === NUTRITION ===
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+async function loadMealsForDate(date) {
+  const meals = await api(`/api/meals?date=${encodeURIComponent(date)}`);
+  const list = $('#meals-list');
+  if (!meals.length) {
+    list.innerHTML = '<p class="empty">Aucun aliment enregistré ce jour-là.</p>';
+  } else {
+    list.innerHTML = meals.map(m => `
+      <div class="meal-row">
+        <div class="meal-name">${m.nom}${m.quantite_g ? ` <span class="dim">(${m.quantite_g} g)</span>` : ''}</div>
+        <div class="meal-macros">
+          ${m.kcal ? `<span>${Math.round(m.kcal)} kcal</span>` : ''}
+          ${m.proteines_g ? `<span>P ${m.proteines_g.toFixed(1)}</span>` : ''}
+          ${m.lipides_g ? `<span>L ${m.lipides_g.toFixed(1)}</span>` : ''}
+          ${m.glucides_g ? `<span>G ${m.glucides_g.toFixed(1)}</span>` : ''}
+        </div>
+        <button class="danger" data-del-meal="${m.id}">×</button>
+      </div>
+    `).join('');
+  }
+  $$('[data-del-meal]').forEach(b => b.addEventListener('click', async () => {
+    await api(`/api/meals/${b.dataset.delMeal}`, { method: 'DELETE' });
+    loadMealsForDate(date);
+  }));
+
+  // Day summary vs targets
+  const summary = $('#day-summary');
+  const totals = meals.reduce((acc, m) => ({
+    kcal: acc.kcal + (m.kcal || 0),
+    p: acc.p + (m.proteines_g || 0),
+    l: acc.l + (m.lipides_g || 0),
+    g: acc.g + (m.glucides_g || 0),
+  }), { kcal: 0, p: 0, l: 0, g: 0 });
+  // Get the user's energy target via the cached profile + last weight
+  let targets = null;
+  try {
+    const profile = await api('/api/profile');
+    const allMs = await api('/api/measurements');
+    const lastWeight = allMs.slice().reverse().find(m => m.poids_kg != null)?.poids_kg;
+    if (profile && lastWeight && window.energyProfile) {
+      const r = window.energyProfile.computeEnergyProfile({ profile, lastWeightKg: lastWeight });
+      if (r.ready) targets = { kcal: r.target_kcal, p: r.protein_g, l: r.fat_g, g: r.carbs_g };
+    }
+  } catch {}
+
+  function bar(label, current, target, unit) {
+    if (!target) return `<div class="macro-bar"><div class="macro-label">${label}</div><div class="macro-val">${current.toFixed(0)} ${unit}</div></div>`;
+    const pct = Math.min(120, (current / target) * 100);
+    const cls = pct < 80 ? 'under' : pct <= 105 ? 'good' : 'over';
+    return `
+      <div class="macro-bar ${cls}">
+        <div class="macro-label">${label}</div>
+        <div class="macro-val">${current.toFixed(0)} / ${target} ${unit}</div>
+        <div class="macro-track"><div class="macro-fill" style="width:${Math.min(100, pct).toFixed(0)}%"></div></div>
+      </div>
+    `;
+  }
+  summary.innerHTML = `
+    ${bar('Calories', totals.kcal, targets?.kcal, 'kcal')}
+    ${bar('Protéines', totals.p, targets?.p, 'g')}
+    ${bar('Lipides', totals.l, targets?.l, 'g')}
+    ${bar('Glucides', totals.g, targets?.g, 'g')}
+  `;
+}
+
+document.addEventListener('input', (e) => {
+  if (e.target?.id === 'meal-date') loadMealsForDate(e.target.value);
+});
+
+// Barcode lookup via OpenFoodFacts
+document.addEventListener('click', async (e) => {
+  if (e.target?.id !== 'barcode-lookup-btn') return;
+  const form = document.getElementById('meal-form');
+  const code = form.barcode.value.trim();
+  const status = document.getElementById('meal-status');
+  if (!code) { status.textContent = 'Saisir un code-barres'; return; }
+  status.textContent = 'Recherche dans OpenFoodFacts…';
+  try {
+    const r = await api(`/api/food/barcode/${encodeURIComponent(code)}`);
+    form.nom.value = r.nom + (r.marque ? ` (${r.marque})` : '');
+    const q = parseFloat(form.quantite_g.value) || 100;
+    if (r.kcal_per_100g != null) form.kcal.value = Math.round(r.kcal_per_100g * q / 100);
+    if (r.proteines_per_100g != null) form.proteines_g.value = (r.proteines_per_100g * q / 100).toFixed(1);
+    if (r.lipides_per_100g != null) form.lipides_g.value = (r.lipides_per_100g * q / 100).toFixed(1);
+    if (r.glucides_per_100g != null) form.glucides_g.value = (r.glucides_per_100g * q / 100).toFixed(1);
+    status.textContent = `✓ Trouvé : ${r.nom} (valeurs pour ${q} g — ajustez la quantité puis re-cliquez si besoin)`;
+  } catch (err) {
+    status.textContent = '✗ ' + err.message;
+  }
+});
+
+document.addEventListener('submit', async (e) => {
+  if (e.target?.id !== 'meal-form') return;
+  e.preventDefault();
+  const form = e.target;
+  const data = formDataToObject(form);
+  delete data.barcode;
+  for (const k of ['quantite_g', 'kcal', 'proteines_g', 'lipides_g', 'glucides_g']) data[k] = num(data[k]);
+  data.date = $('#meal-date').value || todayStr();
+  try {
+    await api('/api/meals', { method: 'POST', body: data });
+    form.reset();
+    loadMealsForDate(data.date);
+    $('#meal-status').textContent = '';
+  } catch (err) { alert('Erreur : ' + err.message); }
+});
 
 // === In-app reminders ===
 async function maybeShowReminders() {

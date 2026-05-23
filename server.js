@@ -148,6 +148,34 @@ db.exec(`
     contenu TEXT NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS goals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    kind TEXT NOT NULL,           -- 'weight' | 'exercise_charge' | 'sessions_week' | 'custom'
+    label TEXT NOT NULL,
+    target_value REAL,
+    target_unit TEXT,             -- 'kg', 'sessions/sem.', etc.
+    target_exercise TEXT,         -- for exercise_charge: name of the exercise
+    start_value REAL,             -- baseline value at goal creation
+    target_date TEXT,
+    achieved_at TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS meals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    nom TEXT NOT NULL,
+    quantite_g REAL,
+    kcal REAL,
+    proteines_g REAL,
+    lipides_g REAL,
+    glucides_g REAL,
+    notes TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // Idempotent column additions for older DBs
@@ -506,7 +534,21 @@ function buildContextSummary(userId) {
   // ("la dernière fois 70 × 8, tente 72.5 × 8") without us spelling it out.
   const records = computeExerciseRecordsServer(getAllWorkouts(userId));
 
-  return { profile, measurements, workouts, energy, exercise_records: records };
+  // Active goals (not yet achieved) — drive the coach's recommendations
+  const goals = db.prepare('SELECT * FROM goals WHERE user_id = ? AND achieved_at IS NULL ORDER BY target_date ASC, id DESC').all(userId);
+
+  // Today's caloric intake so the coach can compare to the target
+  const today = new Date().toISOString().slice(0, 10);
+  const todayMeals = db.prepare('SELECT * FROM meals WHERE user_id = ? AND date = ?').all(userId, today);
+  const intake = todayMeals.reduce((acc, m) => ({
+    kcal: acc.kcal + (m.kcal || 0),
+    proteines_g: acc.proteines_g + (m.proteines_g || 0),
+    lipides_g: acc.lipides_g + (m.lipides_g || 0),
+    glucides_g: acc.glucides_g + (m.glucides_g || 0),
+    items: acc.items + 1,
+  }), { kcal: 0, proteines_g: 0, lipides_g: 0, glucides_g: 0, items: 0 });
+
+  return { profile, measurements, workouts, energy, exercise_records: records, goals, today_intake: intake };
 }
 
 function getAllWorkouts(userId) {
@@ -723,6 +765,104 @@ app.delete('/api/plans/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// ==================== Goals ====================
+app.get('/api/goals', (req, res) => {
+  res.json(db.prepare('SELECT * FROM goals WHERE user_id = ? ORDER BY achieved_at IS NULL DESC, target_date IS NULL, target_date ASC, id DESC').all(req.userId));
+});
+
+app.post('/api/goals', (req, res) => {
+  const g = req.body || {};
+  if (!g.kind || !g.label) return res.status(400).json({ error: 'kind + label requis' });
+  const info = db.prepare(`
+    INSERT INTO goals (user_id, kind, label, target_value, target_unit, target_exercise, start_value, target_date)
+    VALUES (@user_id, @kind, @label, @target_value, @target_unit, @target_exercise, @start_value, @target_date)
+  `).run({
+    user_id: req.userId,
+    kind: g.kind,
+    label: g.label,
+    target_value: g.target_value ?? null,
+    target_unit: g.target_unit ?? null,
+    target_exercise: g.target_exercise ?? null,
+    start_value: g.start_value ?? null,
+    target_date: g.target_date ?? null,
+  });
+  res.json(db.prepare('SELECT * FROM goals WHERE id = ? AND user_id = ?').get(info.lastInsertRowid, req.userId));
+});
+
+app.post('/api/goals/:id/achieve', (req, res) => {
+  const result = db.prepare('UPDATE goals SET achieved_at = COALESCE(achieved_at, datetime(\'now\')) WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
+  if (!result.changes) return res.status(404).json({ error: 'Objectif introuvable' });
+  res.json({ ok: true });
+});
+
+app.delete('/api/goals/:id', (req, res) => {
+  db.prepare('DELETE FROM goals WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
+  res.json({ ok: true });
+});
+
+// ==================== Meals ====================
+app.get('/api/meals', (req, res) => {
+  const date = req.query.date;
+  if (date) {
+    res.json(db.prepare('SELECT * FROM meals WHERE user_id = ? AND date = ? ORDER BY id ASC').all(req.userId, date));
+  } else {
+    res.json(db.prepare('SELECT * FROM meals WHERE user_id = ? ORDER BY date DESC, id DESC LIMIT 200').all(req.userId));
+  }
+});
+
+app.post('/api/meals', (req, res) => {
+  const m = req.body || {};
+  if (!m.nom) return res.status(400).json({ error: 'nom requis' });
+  const info = db.prepare(`
+    INSERT INTO meals (user_id, date, nom, quantite_g, kcal, proteines_g, lipides_g, glucides_g, notes)
+    VALUES (@user_id, @date, @nom, @quantite_g, @kcal, @proteines_g, @lipides_g, @glucides_g, @notes)
+  `).run({
+    user_id: req.userId,
+    date: m.date || new Date().toISOString().slice(0, 10),
+    nom: m.nom,
+    quantite_g: m.quantite_g ?? null,
+    kcal: m.kcal ?? null,
+    proteines_g: m.proteines_g ?? null,
+    lipides_g: m.lipides_g ?? null,
+    glucides_g: m.glucides_g ?? null,
+    notes: m.notes ?? null,
+  });
+  res.json(db.prepare('SELECT * FROM meals WHERE id = ?').get(info.lastInsertRowid));
+});
+
+app.delete('/api/meals/:id', (req, res) => {
+  db.prepare('DELETE FROM meals WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
+  res.json({ ok: true });
+});
+
+// OpenFoodFacts proxy — barcode → nutritional info. No auth required.
+app.get('/api/food/barcode/:code', async (req, res) => {
+  try {
+    const code = String(req.params.code).replace(/[^0-9]/g, '');
+    if (!code) return res.status(400).json({ error: 'Code invalide' });
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,product_name_fr,nutriments,brands,quantity,image_url`, {
+      headers: { 'User-Agent': 'CoachSportifIA - https://github.com' },
+    });
+    const data = await r.json();
+    if (data.status !== 1) return res.status(404).json({ error: 'Produit non trouvé dans OpenFoodFacts' });
+    const p = data.product;
+    const n = p.nutriments || {};
+    res.json({
+      nom: p.product_name_fr || p.product_name || `Produit ${code}`,
+      marque: p.brands || null,
+      image: p.image_url || null,
+      // OpenFoodFacts provides per 100g values
+      kcal_per_100g: n['energy-kcal_100g'] ?? (n['energy_100g'] ? n['energy_100g'] / 4.184 : null),
+      proteines_per_100g: n.proteins_100g ?? null,
+      lipides_per_100g: n.fat_100g ?? null,
+      glucides_per_100g: n.carbohydrates_100g ?? null,
+      quantite: p.quantity || null,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Save a workout as a reusable template (kept inside the plans table with
 // type='template'; the contenu column holds a JSON {exercises:[...]}).
 app.post('/api/templates', (req, res) => {
@@ -823,6 +963,23 @@ function environmentBlock(profile) {
   return `\n## Environnement d'entraînement\n${note}\n`;
 }
 
+function goalsBlock(goals) {
+  if (!goals || !goals.length) return '';
+  const lines = goals.map(g => {
+    const deadline = g.target_date ? ` — échéance ${g.target_date}` : '';
+    const target = g.target_value != null ? ` (cible ${g.target_value}${g.target_unit ? ' ' + g.target_unit : ''})` : '';
+    const exo = g.target_exercise ? ` sur ${g.target_exercise}` : '';
+    return `- [${g.kind}] ${g.label}${target}${exo}${deadline}`;
+  }).join('\n');
+  return `\n## Objectifs actifs (à prendre en compte dans tes recommandations)\n${lines}\n`;
+}
+
+function intakeBlock(intake, energy) {
+  if (!intake || !intake.items) return '';
+  const target = energy?.ready ? ` (cible ${energy.target_kcal} kcal · P ${energy.protein_g} g · L ${energy.fat_g} g · G ${energy.carbs_g} g)` : '';
+  return `\n## Apport caloriques du jour\n- ${intake.kcal.toFixed(0)} kcal · P ${intake.proteines_g.toFixed(0)} g · L ${intake.lipides_g.toFixed(0)} g · G ${intake.glucides_g.toFixed(0)} g${target}\n`;
+}
+
 function recordsBlock(records) {
   if (!records || !records.length) return '';
   const lines = records.map(r =>
@@ -861,6 +1018,8 @@ app.post('/api/generate-workout', async (req, res) => {
 ${JSON.stringify(ctx.profile, null, 2)}
 ${environmentBlock(ctx.profile)}
 ${energyBlock(ctx.energy)}
+${intakeBlock(ctx.today_intake, ctx.energy)}
+${goalsBlock(ctx.goals)}
 ${recordsBlock(ctx.exercise_records)}
 ## Mesures récentes (chronologique inverse)
 ${JSON.stringify(ctx.measurements, null, 2)}
@@ -982,6 +1141,8 @@ app.post('/api/coach-chat', async (req, res) => {
 ${JSON.stringify(ctx.profile, null, 2)}
 ${environmentBlock(ctx.profile)}
 ${energyBlock(ctx.energy)}
+${intakeBlock(ctx.today_intake, ctx.energy)}
+${goalsBlock(ctx.goals)}
 ${recordsBlock(ctx.exercise_records)}
 ## Mesures récentes
 ${JSON.stringify(ctx.measurements, null, 2)}
@@ -1011,6 +1172,8 @@ app.post('/api/progress-analysis', async (req, res) => {
 ${JSON.stringify(ctx.profile, null, 2)}
 ${environmentBlock(ctx.profile)}
 ${energyBlock(ctx.energy)}
+${intakeBlock(ctx.today_intake, ctx.energy)}
+${goalsBlock(ctx.goals)}
 ${recordsBlock(ctx.exercise_records)}
 ## Mesures (chronologique)
 ${JSON.stringify(ctx.measurements, null, 2)}
