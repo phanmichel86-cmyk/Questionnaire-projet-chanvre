@@ -1,0 +1,853 @@
+<title>Panda Maman</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap&subset=latin,latin-ext,vietnamese">
+
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --sakura-deep:#EC5A83;
+  --sakura:#F58AA8;
+  --sakura-soft:#FBD4DE;
+  --sakura-mist:#FDEAEF;
+  --bamboo:#5FAE84;
+  --bamboo-soft:#CDE9D7;
+  --honey:#F4B95F;
+  --sky:#7FB4DB;
+
+  --ink:#39323C;         /* panda soft-black */
+  --text:#5F5560;
+  --text-soft:#8C8189;
+  --line:#F1E2E6;
+
+  --ground:#FFF7F4;      /* warm sakura off-white */
+  --card:#FFFFFF;
+  --card-2:#FEF1F0;
+  --shadow:22px 30px 60px -34px rgba(158,86,110,.55);
+  --shadow-sm:0 10px 24px -16px rgba(158,86,110,.5);
+
+  --ok:#4FA97F; --ok-bg:#E4F4EB;
+  --warn:#DE9A2E; --warn-bg:#FBEED5;
+  --no:#E06277;  --no-bg:#FBE0E5;
+
+  --r:22px; --r-lg:30px;
+  --shell:468px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --sakura-deep:#F98AAB; --sakura:#F58AA8; --sakura-soft:#4A3742; --sakura-mist:#352A34;
+    --bamboo:#79C79B; --bamboo-soft:#2E4038;
+    --ink:#F4EAF0; --text:#C9BCC6; --text-soft:#9C8E9A; --line:#3A303C;
+    --ground:#211A26; --card:#2C2333; --card-2:#332839;
+    --shadow:22px 30px 60px -30px rgba(0,0,0,.6);
+    --shadow-sm:0 10px 24px -16px rgba(0,0,0,.55);
+    --ok:#6FC79B; --ok-bg:#27392F;
+    --warn:#E7B45C; --warn-bg:#3D3320;
+    --no:#F0899C; --no-bg:#40262E;
+  }
+}
+:root[data-theme="dark"]{
+  --sakura-deep:#F98AAB; --sakura:#F58AA8; --sakura-soft:#4A3742; --sakura-mist:#352A34;
+  --bamboo:#79C79B; --bamboo-soft:#2E4038;
+  --ink:#F4EAF0; --text:#C9BCC6; --text-soft:#9C8E9A; --line:#3A303C;
+  --ground:#211A26; --card:#2C2333; --card-2:#332839;
+  --shadow:22px 30px 60px -30px rgba(0,0,0,.6);
+  --shadow-sm:0 10px 24px -16px rgba(0,0,0,.55);
+  --ok:#6FC79B; --ok-bg:#27392F;
+  --warn:#E7B45C; --warn-bg:#3D3320;
+  --no:#F0899C; --no-bg:#40262E;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:"Nunito",system-ui,sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(120% 55% at 15% -8%, var(--sakura-mist), transparent 60%),
+    radial-gradient(120% 55% at 90% 0%, var(--bamboo-soft) , transparent 55%),
+    var(--ground);
+  background-attachment:fixed;
+  -webkit-text-size-adjust:100%;
+  line-height:1.55;
+}
+h1,h2,h3,.disp{font-family:"Baloo 2",system-ui,sans-serif;color:var(--ink);text-wrap:balance;letter-spacing:.1px}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:3px solid var(--sakura);outline-offset:2px;border-radius:12px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ============ SHELL ============ */
+.app{max-width:var(--shell);margin:0 auto;min-height:100vh;padding:0 16px calc(112px + env(safe-area-inset-bottom))}
+
+.top{
+  position:sticky;top:0;z-index:20;
+  margin:0 -16px;padding:14px 18px 14px;
+  background:linear-gradient(180deg,var(--ground) 72%,transparent);
+  backdrop-filter:blur(8px);
+}
+.top-row{display:flex;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.brand h1{font-size:1.32rem;margin:0;line-height:1;font-weight:800}
+.brand small{display:block;font-family:"Nunito";font-weight:700;color:var(--sakura-deep);font-size:.66rem;letter-spacing:1.4px;text-transform:uppercase}
+.mascot{width:46px;height:46px;flex:none;filter:drop-shadow(0 6px 10px rgba(158,86,110,.28))}
+
+.lang{display:flex;background:var(--card);border-radius:999px;padding:3px;box-shadow:var(--shadow-sm);border:1px solid var(--line)}
+.lang button{font-weight:800;font-size:.78rem;padding:6px 11px;border-radius:999px;color:var(--text-soft);line-height:1}
+.lang button[aria-pressed="true"]{background:var(--sakura-deep);color:#fff}
+.theme-btn{width:40px;height:40px;border-radius:50%;background:var(--card);box-shadow:var(--shadow-sm);border:1px solid var(--line);font-size:1.05rem;display:grid;place-items:center;flex:none}
+
+/* ============ CARDS ============ */
+.card{background:var(--card);border-radius:var(--r-lg);box-shadow:var(--shadow);border:1px solid var(--line);padding:20px;margin:16px 0}
+.card.tinted{background:linear-gradient(160deg,var(--card),var(--card-2))}
+.eyebrow{font-size:.68rem;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--sakura-deep);display:flex;align-items:center;gap:7px;margin:0 0 10px}
+.eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--sakura);box-shadow:0 0 0 4px var(--sakura-soft)}
+
+.pill{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:.72rem;padding:5px 11px;border-radius:999px;line-height:1;white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.no{background:var(--no-bg);color:var(--no)}
+.pill.ghost{background:var(--sakura-mist);color:var(--sakura-deep)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:800;padding:13px 18px;border-radius:16px;background:var(--sakura-deep);color:#fff;box-shadow:0 12px 22px -12px var(--sakura-deep);width:100%;font-size:1rem;transition:transform .12s}
+.btn:active{transform:scale(.97)}
+.btn.soft{background:var(--sakura-mist);color:var(--sakura-deep);box-shadow:none}
+
+input,select{font-family:inherit;font-size:1rem;font-weight:700;color:var(--ink);width:100%;padding:13px 15px;border-radius:15px;border:2px solid var(--line);background:var(--card);appearance:none}
+input:focus,select:focus{outline:none;border-color:var(--sakura)}
+label.fld{font-weight:800;font-size:.82rem;color:var(--ink);display:block;margin:0 0 6px}
+.field{margin:0 0 14px}
+select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='none' stroke='%23EC5A83' stroke-width='3' stroke-linecap='round'><path d='M7 10l5 5 5-5'/></svg>");background-repeat:no-repeat;background-position:right 12px center;padding-right:42px}
+
+/* ============ HERO / SUIVI ============ */
+.hero{position:relative;overflow:hidden;text-align:center;padding:24px 20px 22px;background:linear-gradient(165deg,#fff,var(--card-2))}
+.hero .blob{position:absolute;border-radius:50%;filter:blur(2px);opacity:.5}
+.week-big{font-family:"Baloo 2";font-weight:800;font-size:3.7rem;line-height:.9;color:var(--sakura-deep);margin:6px 0 2px}
+.week-big span{font-size:1.1rem;color:var(--text-soft);font-weight:700}
+.tri{font-weight:800;color:var(--bamboo);font-size:.95rem}
+.countdown{display:flex;justify-content:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+.cd{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:9px 14px;min-width:70px;box-shadow:var(--shadow-sm)}
+.cd b{display:block;font-family:"Baloo 2";font-size:1.5rem;color:var(--ink);line-height:1}
+.cd small{font-size:.64rem;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-soft)}
+
+.progress{height:16px;background:var(--sakura-mist);border-radius:999px;margin:18px 0 6px;overflow:hidden;position:relative;border:1px solid var(--line)}
+.progress i{display:block;height:100%;background:linear-gradient(90deg,var(--sakura),var(--sakura-deep));border-radius:999px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+
+.size-row{display:flex;align-items:center;gap:14px;margin-top:6px}
+.size-emoji{width:64px;height:64px;flex:none;border-radius:20px;background:var(--bamboo-soft);display:grid;place-items:center;font-size:2rem}
+.size-row .t{flex:1;min-width:0}
+.size-row .t b{font-family:"Baloo 2";color:var(--ink);font-size:1.12rem;display:block}
+
+.milestone{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px dashed var(--line)}
+.milestone:last-child{border-bottom:none}
+.check{width:26px;height:26px;flex:none;border-radius:9px;border:2px solid var(--sakura-soft);background:var(--card);display:grid;place-items:center;margin-top:2px;transition:.15s;color:#fff;font-weight:900}
+.milestone.done .check{background:var(--bamboo);border-color:var(--bamboo)}
+.milestone.done .m-t{text-decoration:line-through;color:var(--text-soft)}
+.m-t{font-weight:800;color:var(--ink);font-size:.98rem}
+.m-d{font-size:.82rem;color:var(--text-soft)}
+.m-wk{font-size:.66rem;font-weight:800;color:var(--sakura-deep);background:var(--sakura-mist);padding:2px 8px;border-radius:999px;white-space:nowrap;margin-top:3px;display:inline-block}
+
+/* ============ LISTS / FOOD ============ */
+.seg{display:flex;gap:7px;overflow-x:auto;padding:2px;margin:0 -2px 4px;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{white-space:nowrap;font-weight:800;font-size:.82rem;padding:9px 15px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--text);box-shadow:var(--shadow-sm)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+
+.food{display:flex;gap:12px;align-items:center;padding:13px 0;border-bottom:1px solid var(--line)}
+.food:last-child{border-bottom:none}
+.food .ic{width:44px;height:44px;flex:none;border-radius:14px;display:grid;place-items:center;font-size:1.4rem;background:var(--sakura-mist)}
+.food .n{flex:1;min-width:0}
+.food .n b{color:var(--ink);font-weight:800;display:block;font-size:.98rem}
+.food .n span{font-size:.8rem;color:var(--text-soft);display:block;line-height:1.35}
+
+/* ============ RECIPES ============ */
+.rec{padding:0;overflow:hidden;cursor:pointer}
+.rec .head{padding:16px 18px;display:flex;gap:12px;align-items:center}
+.rec .thumb{width:56px;height:56px;flex:none;border-radius:18px;display:grid;place-items:center;font-size:2rem;background:var(--bamboo-soft)}
+.rec h3{margin:0;font-size:1.08rem;line-height:1.05}
+.rec .meta{font-size:.76rem;color:var(--text-soft);font-weight:700;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
+.tags{display:flex;gap:6px;flex-wrap:wrap;padding:0 18px 16px}
+.tag{font-size:.68rem;font-weight:800;padding:4px 9px;border-radius:999px;background:var(--sakura-mist);color:var(--sakura-deep)}
+.tag.g{background:var(--bamboo-soft);color:var(--bamboo)}
+.rec .body{display:none;padding:0 18px 18px;border-top:1px dashed var(--line);margin-top:0}
+.rec.open .body{display:block;animation:fade .3s}
+@keyframes fade{from{opacity:0;transform:translateY(-4px)}to{opacity:1}}
+.rec .body h4{font-family:"Baloo 2";color:var(--sakura-deep);margin:16px 0 7px;font-size:.95rem}
+.rec ul,.rec ol{margin:0;padding-left:20px}
+.rec li{margin:5px 0;font-size:.92rem}
+.why{background:var(--bamboo-soft);color:var(--bamboo);border-radius:14px;padding:11px 13px;font-size:.86rem;font-weight:700;margin-top:14px;display:flex;gap:8px}
+.fav{margin-left:auto;font-size:1.5rem;line-height:1;background:none;flex:none;filter:grayscale(1);opacity:.5;transition:.15s}
+.fav[aria-pressed="true"]{filter:none;opacity:1;transform:scale(1.1)}
+
+/* exercise */
+.ex .head .thumb{background:var(--sakura-soft)}
+.safe{font-size:.8rem;font-weight:800;color:var(--warn);background:var(--warn-bg);border-radius:12px;padding:9px 12px;margin-top:12px;display:flex;gap:8px}
+
+.intro{font-size:.9rem;color:var(--text)}
+.disclaimer{font-size:.76rem;color:var(--text-soft);text-align:center;padding:6px 8px 2px;line-height:1.5}
+.empty{text-align:center;color:var(--text-soft);font-weight:700;padding:30px 10px}
+.sec-title{display:flex;align-items:center;gap:10px;margin:22px 4px 2px}
+.sec-title h2{font-size:1.35rem;margin:0}
+
+/* ============ TABBAR ============ */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30}
+.tabbar-in{max-width:var(--shell);margin:0 auto;padding:8px 12px calc(8px + env(safe-area-inset-bottom));display:flex;gap:4px;
+  background:var(--card);border-top:1px solid var(--line);border-radius:26px 26px 0 0;box-shadow:0 -18px 40px -28px rgba(158,86,110,.6)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;border-radius:16px;color:var(--text-soft);font-weight:800;font-size:.66rem}
+.tab svg{width:25px;height:25px}
+.tab[aria-pressed="true"]{color:var(--sakura-deep)}
+.tab[aria-pressed="true"] .ib{background:var(--sakura-mist)}
+.ib{width:52px;height:32px;border-radius:14px;display:grid;place-items:center;transition:.15s}
+
+.view{animation:fade .35s}
+.hidden{display:none!important}
+.wk-nav{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:4px}
+.wk-nav button{width:38px;height:38px;border-radius:50%;background:var(--sakura-mist);color:var(--sakura-deep);font-size:1.3rem;font-weight:900;display:grid;place-items:center}
+.wk-nav b{font-family:"Baloo 2";min-width:120px;text-align:center;color:var(--ink)}
+textarea{font-family:inherit;font-size:.95rem;font-weight:600;color:var(--ink);width:100%;padding:12px 14px;border-radius:15px;border:2px solid var(--line);background:var(--card);resize:vertical;min-height:70px}
+textarea:focus{outline:none;border-color:var(--sakura)}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="top-row">
+      <div class="brand">
+        <svg class="mascot" viewBox="0 0 100 100" aria-hidden="true">
+          <ellipse cx="24" cy="30" rx="13" ry="14" fill="#39323C"/>
+          <ellipse cx="76" cy="30" rx="13" ry="14" fill="#39323C"/>
+          <circle cx="50" cy="56" r="34" fill="#fff" stroke="#39323C" stroke-width="2.5"/>
+          <ellipse cx="35" cy="52" rx="10" ry="12" fill="#39323C"/>
+          <ellipse cx="65" cy="52" rx="10" ry="12" fill="#39323C"/>
+          <circle cx="35" cy="53" r="3.4" fill="#fff"/>
+          <circle cx="65" cy="53" r="3.4" fill="#fff"/>
+          <ellipse cx="50" cy="64" rx="4.6" ry="3.4" fill="#39323C"/>
+          <path d="M44 71q6 5 12 0" stroke="#39323C" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+          <circle cx="24" cy="66" r="6" fill="#FBD4DE"/>
+          <circle cx="76" cy="66" r="6" fill="#FBD4DE"/>
+        </svg>
+        <div>
+          <h1>Panda Maman</h1>
+          <small data-i="tagline">Suivi de grossesse</small>
+        </div>
+      </div>
+      <button class="theme-btn" id="themeBtn" title="Thème" aria-label="Thème">🌙</button>
+      <div class="lang" role="group" aria-label="Langue / Ngôn ngữ">
+        <button data-lang="fr" aria-pressed="true">FR</button>
+        <button data-lang="vi" aria-pressed="false">VI</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="views"></main>
+
+  <nav class="tabbar" aria-label="Navigation">
+    <div class="tabbar-in" id="tabbar"></div>
+  </nav>
+</div>
+
+<script>
+/* ============================================================
+   PANDA MAMAN — bilingual (FR / VI) pregnancy companion
+   State persisted in localStorage. No network needed.
+============================================================ */
+const $=(s,r=document)=>r.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+const store={
+  get(k,d){try{const v=localStorage.getItem('pm_'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem('pm_'+k,JSON.stringify(v));}catch(e){}}
+};
+
+let lang = store.get('lang','fr');
+let tab  = 'suivi';
+const T = o => (o && o[lang]!=null) ? o[lang] : (o?o.fr:'');
+
+/* ---------- UI STRINGS ---------- */
+const S = {
+  tagline:{fr:'Suivi de grossesse',vi:'Theo dõi thai kỳ'},
+  tabs:{
+    suivi:{fr:'Suivi',vi:'Theo dõi'},
+    food:{fr:'Gourmand',vi:'Ăn uống'},
+    recipes:{fr:'Recettes',vi:'Công thức'},
+    move:{fr:'Exercices',vi:'Vận động'}
+  },
+  setup_title:{fr:'Bienvenue, petite maman panda 🐼',vi:'Chào mẹ gấu trúc bé nhỏ 🐼'},
+  setup_intro:{fr:'Indique ta date prévue d’accouchement (ou le 1ᵉʳ jour de tes dernières règles) pour suivre ta semaine, ton bébé et tes étapes.',
+               vi:'Nhập ngày dự sinh (hoặc ngày đầu của kỳ kinh cuối) để theo dõi tuần thai, em bé và các cột mốc.'},
+  by_dd:{fr:'Date prévue d’accouchement',vi:'Ngày dự sinh'},
+  by_lmp:{fr:'1ᵉʳ jour des dernières règles',vi:'Ngày đầu kinh cuối'},
+  mode_dd:{fr:'Je connais ma date de terme',vi:'Tôi biết ngày dự sinh'},
+  mode_lmp:{fr:'Je connais mes dernières règles',vi:'Tôi biết ngày kinh cuối'},
+  save:{fr:'C’est parti !',vi:'Bắt đầu!'},
+  week_label:{fr:'semaine',vi:'tuần'},
+  weeks_word:{fr:'semaines',vi:'tuần'},
+  trimester:{fr:['1ᵉʳ trimestre','2ᵉ trimestre','3ᵉ trimestre'],vi:['Tam cá nguyệt 1','Tam cá nguyệt 2','Tam cá nguyệt 3']},
+  cd_weeks:{fr:'sem. faites',vi:'tuần rồi'},
+  cd_left:{fr:'jours restants',vi:'ngày còn lại'},
+  cd_done:{fr:'% du chemin',vi:'% chặng đường'},
+  baby_now:{fr:'Ton bébé cette semaine',vi:'Em bé tuần này'},
+  baby_size:{fr:'Taille d’un(e)',vi:'To bằng'},
+  milestones:{fr:'Étapes importantes',vi:'Các cột mốc quan trọng'},
+  ms_intro:{fr:'Coche au fur et à mesure. Les rendez-vous suivent le calendrier français.',vi:'Đánh dấu khi hoàn thành. Lịch hẹn theo chuẩn của Pháp.'},
+  journal:{fr:'Mon journal de la semaine',vi:'Nhật ký tuần này'},
+  journal_ph:{fr:'Comment te sens-tu ? Envies, symptômes, petits bonheurs…',vi:'Bạn cảm thấy thế nào? Thèm ăn, triệu chứng, niềm vui nhỏ…'},
+  saved:{fr:'Enregistré ✓',vi:'Đã lưu ✓'},
+  edit_date:{fr:'Modifier ma date',vi:'Sửa ngày'},
+  food_title:{fr:'Ce que je peux manger',vi:'Mình ăn được gì'},
+  food_intro:{fr:'Filtre par catégorie. Vert = oui, orange = prudence, rose = à éviter.',vi:'Lọc theo nhóm. Xanh = được, cam = cẩn thận, hồng = nên tránh.'},
+  f_all:{fr:'Tout',vi:'Tất cả'},
+  f_ok:{fr:'À volonté',vi:'Thoải mái'},
+  f_warn:{fr:'Avec prudence',vi:'Cẩn thận'},
+  f_no:{fr:'À éviter',vi:'Nên tránh'},
+  search_food:{fr:'Chercher un aliment…',vi:'Tìm món ăn…'},
+  rec_title:{fr:'Recettes faciles',vi:'Công thức dễ làm'},
+  rec_intro:{fr:'Choisis selon tes envies, tes ingrédients ou un type de cuisine.',vi:'Chọn theo sở thích, nguyên liệu có sẵn hoặc kiểu ẩm thực.'},
+  cuisine:{fr:'Cuisine',vi:'Ẩm thực'},
+  craving:{fr:'Envie',vi:'Thèm gì'},
+  ingredient:{fr:'Ingrédient',vi:'Nguyên liệu'},
+  any:{fr:'Toutes',vi:'Tất cả'},
+  any_ing:{fr:'Tous',vi:'Tất cả'},
+  fav_only:{fr:'♡ Favoris',vi:'♡ Yêu thích'},
+  ingredients:{fr:'Ingrédients',vi:'Nguyên liệu'},
+  steps:{fr:'Préparation',vi:'Cách làm'},
+  serves:{fr:'pers.',vi:'người'},
+  mins:{fr:'min',vi:'phút'},
+  move_title:{fr:'Bouger en douceur',vi:'Vận động nhẹ nhàng'},
+  move_intro:{fr:'Exercices adaptés à chaque trimestre. Écoute toujours ton corps.',vi:'Bài tập phù hợp từng tam cá nguyệt. Luôn lắng nghe cơ thể.'},
+  all_tri:{fr:'Tous',vi:'Tất cả'},
+  t1:{fr:'1ᵉʳ tri.',vi:'TCN 1'},t2:{fr:'2ᵉ tri.',vi:'TCN 2'},t3:{fr:'3ᵉ tri.',vi:'TCN 3'},
+  safety:{fr:'À savoir',vi:'Lưu ý'},
+  no_result:{fr:'Aucun résultat 🐼 essaie un autre filtre.',vi:'Không có kết quả 🐼 thử bộ lọc khác.'},
+  disclaimer:{fr:'💗 Cette application est une aide bien-être et ne remplace pas ton médecin ou ta sage-femme. En cas de doute, demande toujours à un professionnel de santé.',
+              vi:'💗 Ứng dụng này chỉ hỗ trợ chăm sóc, không thay thế bác sĩ hay nữ hộ sinh. Khi nghi ngờ, hãy hỏi ý kiến chuyên gia y tế.'}
+};
+
+/* ---------- BABY SIZE BY WEEK (wk 4→40) ---------- */
+const BABY = {
+  4:{e:'🌱',fr:'graine de pavot',vi:'hạt anh túc',d:{fr:'L’implantation commence. C’est minuscule mais tout démarre.',vi:'Phôi bắt đầu làm tổ. Rất nhỏ nhưng mọi thứ đã khởi đầu.'}},
+  5:{e:'🫐',fr:'graine de sésame',vi:'hạt mè',d:{fr:'Le tube neural se forme (pense à l’acide folique !).',vi:'Ống thần kinh hình thành (nhớ bổ sung axit folic!).'}},
+  6:{e:'🫛',fr:'petit pois',vi:'hạt đậu',d:{fr:'Le petit cœur commence à battre.',vi:'Tim bé bắt đầu đập.'}},
+  7:{e:'🫐',fr:'myrtille',vi:'quả việt quất',d:{fr:'Bras et jambes bourgeonnent.',vi:'Tay và chân nhú ra.'}},
+  8:{e:'🍓',fr:'framboise',vi:'quả mâm xôi',d:{fr:'Les doigts se dessinent.',vi:'Ngón tay bắt đầu hình thành.'}},
+  9:{e:'🍒',fr:'cerise',vi:'quả anh đào',d:{fr:'On parle officiellement de fœtus.',vi:'Chính thức gọi là thai nhi.'}},
+  10:{e:'🍓',fr:'fraise',vi:'quả dâu',d:{fr:'Les organes vitaux sont en place.',vi:'Các cơ quan quan trọng đã hình thành.'}},
+  11:{e:'🥝',fr:'kiwi',vi:'quả kiwi',d:{fr:'Bébé peut déjà bâiller.',vi:'Bé đã có thể ngáp.'}},
+  12:{e:'🍋',fr:'citron vert',vi:'quả chanh',d:{fr:'1ʳᵉ échographie ! Les réflexes apparaissent.',vi:'Siêu âm lần 1! Các phản xạ xuất hiện.'}},
+  13:{e:'🫑',fr:'gousse de pois',vi:'quả đậu',d:{fr:'Les empreintes digitales se forment.',vi:'Vân tay hình thành.'}},
+  14:{e:'🍋',fr:'citron',vi:'quả chanh vàng',d:{fr:'Bébé fait des grimaces.',vi:'Bé bắt đầu nhăn mặt.'}},
+  15:{e:'🍎',fr:'pomme',vi:'quả táo',d:{fr:'Il perçoit la lumière.',vi:'Bé cảm nhận được ánh sáng.'}},
+  16:{e:'🥑',fr:'avocat',vi:'quả bơ',d:{fr:'Tu sentiras peut-être les 1ᵉʳˢ mouvements.',vi:'Bạn có thể cảm nhận cử động đầu tiên.'}},
+  17:{e:'🍐',fr:'poire',vi:'quả lê',d:{fr:'Le squelette se solidifie.',vi:'Bộ xương cứng cáp dần.'}},
+  18:{e:'🍠',fr:'patate douce',vi:'củ khoai lang',d:{fr:'Bébé entend ta voix.',vi:'Bé nghe được giọng của mẹ.'}},
+  19:{e:'🥭',fr:'mangue',vi:'quả xoài',d:{fr:'Le vernix protège sa peau.',vi:'Lớp vernix bảo vệ da bé.'}},
+  20:{e:'🍌',fr:'banane',vi:'quả chuối',d:{fr:'Mi-parcours ! 2ᵉ échographie.',vi:'Nửa chặng đường! Siêu âm lần 2.'}},
+  21:{e:'🥕',fr:'carotte',vi:'củ cà rốt',d:{fr:'Bébé avale du liquide amniotique.',vi:'Bé nuốt nước ối.'}},
+  22:{e:'🌽',fr:'épi de maïs',vi:'bắp ngô',d:{fr:'Les sourcils apparaissent.',vi:'Lông mày xuất hiện.'}},
+  23:{e:'🍆',fr:'grosse mangue',vi:'quả xoài lớn',d:{fr:'Il réagit aux sons forts.',vi:'Bé phản ứng với âm thanh lớn.'}},
+  24:{e:'🌽',fr:'épi de maïs',vi:'bắp ngô',d:{fr:'Viabilité : ses poumons se développent.',vi:'Phổi bé đang phát triển.'}},
+  25:{e:'🥬',fr:'chou-rave',vi:'củ su hào',d:{fr:'Bébé prend du poids.',vi:'Bé tăng cân.'}},
+  26:{e:'🥒',fr:'concombre',vi:'quả dưa leo',d:{fr:'Il ouvre les yeux.',vi:'Bé mở mắt.'}},
+  27:{e:'🥦',fr:'chou-fleur',vi:'bông cải',d:{fr:'Début du 3ᵉ trimestre. Il a le hoquet !',vi:'Bắt đầu tam cá nguyệt 3. Bé bị nấc!'}},
+  28:{e:'🍆',fr:'aubergine',vi:'quả cà tím',d:{fr:'Il rêve (sommeil paradoxal).',vi:'Bé đã biết mơ (giấc ngủ REM).'}},
+  29:{e:'🎃',fr:'petite courge',vi:'quả bí nhỏ',d:{fr:'Ses os se renforcent.',vi:'Xương bé chắc hơn.'}},
+  30:{e:'🥥',fr:'noix de coco',vi:'quả dừa',d:{fr:'Le cerveau grandit vite.',vi:'Não bé phát triển nhanh.'}},
+  31:{e:'🥥',fr:'grosse noix de coco',vi:'quả dừa lớn',d:{fr:'Il perçoit tous les sons.',vi:'Bé nghe được mọi âm thanh.'}},
+  32:{e:'🍍',fr:'ananas',vi:'quả dứa',d:{fr:'3ᵉ échographie. Il se retourne tête en bas.',vi:'Siêu âm lần 3. Bé xoay đầu xuống.'}},
+  33:{e:'🍍',fr:'ananas',vi:'quả dứa',d:{fr:'Le système immunitaire se met en place.',vi:'Hệ miễn dịch hình thành.'}},
+  34:{e:'🍈',fr:'melon',vi:'quả dưa lưới',d:{fr:'Les ongles poussent.',vi:'Móng tay mọc dài.'}},
+  35:{e:'🍈',fr:'gros melon',vi:'quả dưa lớn',d:{fr:'Il prend surtout du gras.',vi:'Bé tích mỡ.'}},
+  36:{e:'🥬',fr:'salade romaine',vi:'cây xà lách',d:{fr:'Bébé descend dans le bassin.',vi:'Bé tụt xuống khung chậu.'}},
+  37:{e:'🥬',fr:'blette',vi:'cải cầu vồng',d:{fr:'À terme bientôt : il est presque prêt !',vi:'Sắp đủ tháng: bé gần sẵn sàng!'}},
+  38:{e:'🎃',fr:'poireau',vi:'cây tỏi tây',d:{fr:'Les poumons finissent de mûrir.',vi:'Phổi bé hoàn thiện.'}},
+  39:{e:'🍉',fr:'petite pastèque',vi:'quả dưa hấu nhỏ',d:{fr:'Il est à terme.',vi:'Bé đã đủ tháng.'}},
+  40:{e:'🍉',fr:'pastèque',vi:'quả dưa hấu',d:{fr:'C’est le grand jour, ou presque ! 💕',vi:'Ngày trọng đại đã đến, gần rồi! 💕'}}
+};
+function babyFor(w){ if(w<4)return BABY[4]; if(w>40)return BABY[40]; return BABY[w]||BABY[Math.max(4,w-1)]; }
+
+/* ---------- MILESTONES ---------- */
+const MILESTONES=[
+  {w:6, t:{fr:'Déclaration de grossesse',vi:'Khai báo mang thai'}, d:{fr:'1ᵉʳ rendez-vous, prise de sang, début de suivi.',vi:'Khám lần đầu, xét nghiệm máu, bắt đầu theo dõi.'}},
+  {w:8, t:{fr:'Acide folique & vitamines',vi:'Axit folic & vitamin'}, d:{fr:'Vérifie ta supplémentation avec ton médecin.',vi:'Kiểm tra việc bổ sung với bác sĩ.'}},
+  {w:12,t:{fr:'1ʳᵉ échographie',vi:'Siêu âm lần 1'}, d:{fr:'Datation + clarté nucale (11–13 SA).',vi:'Xác định tuổi thai + độ mờ da gáy (tuần 11–13).'}},
+  {w:16,t:{fr:'Consultation du 4ᵉ mois',vi:'Khám tháng thứ 4'}, d:{fr:'Suivi mensuel jusqu’à la fin.',vi:'Khám định kỳ hàng tháng đến cuối thai kỳ.'}},
+  {w:22,t:{fr:'2ᵉ échographie (morphologique)',vi:'Siêu âm lần 2 (hình thái)'}, d:{fr:'On observe la morphologie de bébé (20–22 SA).',vi:'Kiểm tra hình thái của bé (tuần 20–22).'}},
+  {w:24,t:{fr:'Test du diabète gestationnel',vi:'Xét nghiệm tiểu đường thai kỳ'}, d:{fr:'Test O’Sullivan si recommandé (24–28 SA).',vi:'Nghiệm pháp dung nạp đường nếu được chỉ định.'}},
+  {w:28,t:{fr:'Cours de préparation',vi:'Lớp học tiền sản'}, d:{fr:'Inscris-toi à la préparation à la naissance.',vi:'Đăng ký lớp chuẩn bị sinh.'}},
+  {w:32,t:{fr:'3ᵉ échographie',vi:'Siêu âm lần 3'}, d:{fr:'Croissance et position de bébé (31–33 SA).',vi:'Theo dõi tăng trưởng và ngôi thai (tuần 31–33).'}},
+  {w:36,t:{fr:'Valise de maternité',vi:'Chuẩn bị đồ đi sinh'}, d:{fr:'Prépare ton sac et le projet de naissance.',vi:'Chuẩn bị túi đồ và kế hoạch sinh.'}},
+  {w:37,t:{fr:'Prélèvement vaginal (Strepto B)',vi:'Xét nghiệm liên cầu khuẩn B'}, d:{fr:'Dépistage entre 35 et 38 SA.',vi:'Tầm soát giữa tuần 35 và 38.'}},
+  {w:39,t:{fr:'Sac prêt près de la porte',vi:'Túi đồ để sẵn gần cửa'}, d:{fr:'Repère le trajet vers la maternité.',vi:'Xác định đường đến bệnh viện.'}},
+  {w:40,t:{fr:'Terme 🌸',vi:'Ngày dự sinh 🌸'}, d:{fr:'Reste à l’écoute, ça approche !',vi:'Lắng nghe cơ thể, sắp rồi!'}}
+];
+
+/* ---------- FOODS ---------- */
+const FOODS=[
+  {s:'no',e:'🍣',n:{fr:'Poisson & viande crus',vi:'Cá & thịt sống'},r:{fr:'Sushis, tartares : risque listériose/toxoplasmose.',vi:'Sushi, tartare: nguy cơ listeria/toxoplasma.'}},
+  {s:'no',e:'🧀',n:{fr:'Fromages au lait cru',vi:'Phô mai sữa tươi'},r:{fr:'Camembert, roquefort non pasteurisés à éviter.',vi:'Tránh phô mai chưa tiệt trùng.'}},
+  {s:'no',e:'🥓',n:{fr:'Charcuterie crue',vi:'Thịt nguội sống'},r:{fr:'Pâté, rillettes, jambon cru : listériose.',vi:'Pa-tê, giăm bông sống: nguy cơ listeria.'}},
+  {s:'no',e:'🍳',n:{fr:'Œufs crus',vi:'Trứng sống'},r:{fr:'Mayo maison, mousse : risque salmonelle.',vi:'Mayonnaise tự làm, mousse: nguy cơ salmonella.'}},
+  {s:'no',e:'🍷',n:{fr:'Alcool',vi:'Rượu bia'},r:{fr:'Zéro alcool, à tous les stades.',vi:'Tuyệt đối không, suốt thai kỳ.'}},
+  {s:'no',e:'🐟',n:{fr:'Gros poissons (mercure)',vi:'Cá lớn (thủy ngân)'},r:{fr:'Espadon, requin, thon rouge : à limiter fortement.',vi:'Cá kiếm, cá mập, cá ngừ: hạn chế tối đa.'}},
+  {s:'no',e:'🥩',n:{fr:'Foie & abats',vi:'Gan & nội tạng'},r:{fr:'Trop de vitamine A. À éviter.',vi:'Quá nhiều vitamin A. Nên tránh.'}},
+  {s:'warn',e:'☕',n:{fr:'Caféine',vi:'Cà phê'},r:{fr:'Max ~200 mg/jour (≈2 cafés).',vi:'Tối đa ~200 mg/ngày (≈2 ly).'}},
+  {s:'warn',e:'🍵',n:{fr:'Tisanes',vi:'Trà thảo mộc'},r:{fr:'Certaines plantes déconseillées : demande conseil.',vi:'Một số loại không nên: hỏi ý kiến.'}},
+  {s:'warn',e:'🥗',n:{fr:'Crudités & salades',vi:'Rau sống & salad'},r:{fr:'Bien laver (toxoplasmose). OK si lavé.',vi:'Rửa thật kỹ (toxoplasma). Được nếu rửa sạch.'}},
+  {s:'warn',e:'🍤',n:{fr:'Fruits de mer',vi:'Hải sản'},r:{fr:'Bien cuits uniquement.',vi:'Chỉ khi nấu chín kỹ.'}},
+  {s:'warn',e:'🧂',n:{fr:'Sucre & sel en excès',vi:'Đường & muối'},r:{fr:'Avec modération.',vi:'Dùng vừa phải.'}},
+  {s:'ok',e:'🥦',n:{fr:'Légumes verts',vi:'Rau xanh'},r:{fr:'Riches en folates et en fer. Parfait !',vi:'Giàu folate và sắt. Tuyệt vời!'}},
+  {s:'ok',e:'🍚',n:{fr:'Riz & féculents cuits',vi:'Cơm & tinh bột'},r:{fr:'Énergie douce pour la journée.',vi:'Năng lượng cho cả ngày.'}},
+  {s:'ok',e:'🥚',n:{fr:'Œufs bien cuits',vi:'Trứng chín kỹ'},r:{fr:'Protéines + choline pour le cerveau.',vi:'Đạm + choline cho não bé.'}},
+  {s:'ok',e:'🐔',n:{fr:'Viande bien cuite',vi:'Thịt nấu chín'},r:{fr:'Fer et protéines. Cuisson à cœur.',vi:'Sắt và đạm. Nấu chín hoàn toàn.'}},
+  {s:'ok',e:'🐠',n:{fr:'Poisson cuit peu mercuré',vi:'Cá ít thủy ngân, nấu chín'},r:{fr:'Saumon, sardine : oméga-3 !',vi:'Cá hồi, cá mòi: omega-3!'}},
+  {s:'ok',e:'🥛',n:{fr:'Laitages pasteurisés',vi:'Sữa tiệt trùng'},r:{fr:'Calcium pour les os de bébé.',vi:'Canxi cho xương của bé.'}},
+  {s:'ok',e:'🍊',n:{fr:'Fruits frais lavés',vi:'Trái cây tươi rửa sạch'},r:{fr:'Vitamines et fibres.',vi:'Vitamin và chất xơ.'}},
+  {s:'ok',e:'🥜',n:{fr:'Noix & légumineuses',vi:'Hạt & đậu'},r:{fr:'Protéines végétales et fer.',vi:'Đạm thực vật và sắt.'}},
+  {s:'ok',e:'💧',n:{fr:'Eau',vi:'Nước'},r:{fr:'1,5 à 2 L par jour.',vi:'1,5 – 2 lít mỗi ngày.'}}
+];
+
+/* ---------- RECIPES ---------- */
+const RECIPES=[
+  {e:'🍜',cuisine:'vi',crav:'comfort',ings:['poulet','riz','gingembre'],
+   n:{fr:'Cháo gà — riz au poulet réconfortant',vi:'Cháo gà'},time:40,serves:4,
+   ing:{fr:['1 blanc de poulet','1 tasse de riz','1 morceau de gingembre','Oignon vert, coriandre','Sel, poivre'],
+        vi:['1 ức gà','1 chén gạo','1 nhánh gừng','Hành lá, ngò','Muối, tiêu']},
+   step:{fr:['Cuire le poulet dans 1,5 L d’eau avec le gingembre.','Ajouter le riz rincé, laisser mijoter 30 min en remuant.','Effilocher le poulet, remettre dans le cháo.','Servir avec oignon vert et coriandre.'],
+         vi:['Luộc gà trong 1,5 L nước với gừng.','Cho gạo đã vo vào, ninh 30 phút, khuấy đều.','Xé nhỏ thịt gà, cho lại vào cháo.','Rắc hành lá và ngò, dùng nóng.']},
+   why:{fr:'Doux pour les nausées, riche en protéines et facile à digérer.',vi:'Dịu cho cơn ốm nghén, giàu đạm và dễ tiêu.'}},
+
+  {e:'🍲',cuisine:'vi',crav:'fresh',ings:['poisson','tomate','ananas'],
+   n:{fr:'Canh chua — soupe aigre-douce',vi:'Canh chua cá'},time:35,serves:4,
+   ing:{fr:['Filet de poisson blanc','2 tomates','Ananas, tamarin','Pousses de soja, herbes','Bien cuire le poisson'],
+        vi:['Phi lê cá trắng','2 quả cà chua','Dứa, me','Giá đỗ, rau thơm','Nấu cá chín kỹ']},
+   step:{fr:['Faire bouillir l’eau avec le tamarin.','Ajouter tomates et ananas.','Ajouter le poisson et bien cuire.','Finir avec pousses de soja et herbes.'],
+         vi:['Đun sôi nước với me.','Cho cà chua và dứa vào.','Cho cá vào nấu chín kỹ.','Thêm giá và rau thơm.']},
+   why:{fr:'Rafraîchissant, vitaminé et hydratant. Poisson bien cuit.',vi:'Thanh mát, nhiều vitamin. Cá được nấu chín kỹ.'}},
+
+  {e:'🥗',cuisine:'fr',crav:'fresh',ings:['avocat','oeuf','pain'],
+   n:{fr:'Tartine avocat & œuf dur',vi:'Bánh mì bơ & trứng luộc'},time:12,serves:1,
+   ing:{fr:['1 tranche de pain complet','½ avocat','1 œuf bien cuit','Filet de citron, sel'],
+        vi:['1 lát bánh mì nguyên cám','½ quả bơ','1 quả trứng luộc chín','Chanh, muối']},
+   step:{fr:['Écraser l’avocat avec le citron.','Toaster le pain, tartiner.','Ajouter l’œuf en rondelles.','Saler légèrement.'],
+         vi:['Nghiền bơ với chanh.','Nướng bánh mì, phết bơ.','Xếp trứng cắt lát lên trên.','Rắc chút muối.']},
+   why:{fr:'Bon gras + protéines + folates : un en-cas parfait.',vi:'Chất béo tốt + đạm + folate: bữa phụ hoàn hảo.'}},
+
+  {e:'🍝',cuisine:'fr',crav:'comfort',ings:['pates','tomate','epinard'],
+   n:{fr:'Pâtes épinards & ricotta',vi:'Mì Ý rau chân vịt & ricotta'},time:20,serves:2,
+   ing:{fr:['200 g de pâtes','2 poignées d’épinards','3 c. à s. ricotta (pasteurisée)','Ail, huile d’olive'],
+        vi:['200 g mì','2 nắm rau chân vịt','3 thìa ricotta (tiệt trùng)','Tỏi, dầu ô liu']},
+   step:{fr:['Cuire les pâtes.','Faire tomber les épinards à l’ail.','Mélanger avec la ricotta.','Ajouter les pâtes et un peu d’eau de cuisson.'],
+         vi:['Luộc mì.','Xào rau chân vịt với tỏi.','Trộn cùng ricotta.','Cho mì vào, thêm chút nước luộc.']},
+   why:{fr:'Fer + calcium + énergie douce. Réconfortant.',vi:'Sắt + canxi + năng lượng. Ấm bụng.'}},
+
+  {e:'🍛',cuisine:'vi',crav:'salty',ings:['tofu','tomate','riz'],
+   n:{fr:'Đậu sốt cà — tofu à la tomate',vi:'Đậu hũ sốt cà'},time:25,serves:3,
+   ing:{fr:['1 bloc de tofu ferme','3 tomates','Oignon, oignon vert','Sauce soja, riz'],
+        vi:['1 bìa đậu hũ','3 quả cà chua','Hành tây, hành lá','Nước tương, cơm']},
+   step:{fr:['Dorer le tofu en cubes.','Cuire la sauce tomate avec l’oignon.','Ajouter le tofu, mijoter 10 min.','Servir avec du riz.'],
+         vi:['Chiên vàng đậu hũ.','Nấu sốt cà với hành.','Cho đậu vào, om 10 phút.','Dùng với cơm.']},
+   why:{fr:'Protéines végétales, fer et lycopène. Végétarien.',vi:'Đạm thực vật, sắt và lycopene. Món chay.'}},
+
+  {e:'🥣',cuisine:'other',crav:'sweet',ings:['avoine','banane','lait'],
+   n:{fr:'Porridge avoine, banane & noix',vi:'Cháo yến mạch chuối & hạt'},time:10,serves:1,
+   ing:{fr:['4 c. à s. de flocons d’avoine','1 banane','200 ml de lait pasteurisé','Noix, miel'],
+        vi:['4 thìa yến mạch','1 quả chuối','200 ml sữa tiệt trùng','Hạt óc chó, mật ong']},
+   step:{fr:['Chauffer le lait avec l’avoine 5 min.','Écraser la banane dedans.','Garnir de noix et d’un filet de miel.'],
+         vi:['Nấu sữa với yến mạch 5 phút.','Nghiền chuối vào cháo.','Rắc hạt và chút mật ong.']},
+   why:{fr:'Fibres anti-constipation + énergie longue durée.',vi:'Chất xơ chống táo bón + năng lượng bền.'}},
+
+  {e:'🍢',cuisine:'vi',crav:'comfort',ings:['poulet','gingembre','riz'],
+   n:{fr:'Gà kho gừng — poulet mijoté au gingembre',vi:'Gà kho gừng'},time:30,serves:3,
+   ing:{fr:['4 hauts de cuisse de poulet','Gingembre','Sauce soja, un peu de sucre','Riz'],
+        vi:['4 đùi gà','Gừng','Nước tương, chút đường','Cơm']},
+   step:{fr:['Dorer le poulet.','Ajouter gingembre et sauce soja.','Mijoter à couvert 20 min.','Servir avec du riz chaud.'],
+         vi:['Áp chảo gà cho vàng.','Cho gừng và nước tương.','Kho nhỏ lửa 20 phút.','Dùng với cơm nóng.']},
+   why:{fr:'Le gingembre apaise les nausées, riche en fer.',vi:'Gừng làm dịu buồn nôn, giàu sắt.'}},
+
+  {e:'🥤',cuisine:'other',crav:'sweet',ings:['banane','lait','mangue'],
+   n:{fr:'Smoothie mangue-banane calcium',vi:'Sinh tố xoài chuối'},time:5,serves:1,
+   ing:{fr:['1 mangue','1 banane','150 ml yaourt pasteurisé','Un peu d’eau'],
+        vi:['1 quả xoài','1 quả chuối','150 ml sữa chua tiệt trùng','Chút nước']},
+   step:{fr:['Éplucher les fruits.','Mixer avec le yaourt.','Servir bien frais.'],
+         vi:['Gọt vỏ trái cây.','Xay cùng sữa chua.','Dùng lạnh.']},
+   why:{fr:'Vitamine C, potassium et calcium en un verre.',vi:'Vitamin C, kali và canxi trong một ly.'}},
+
+  {e:'🍲',cuisine:'fr',crav:'comfort',ings:['legumes','pomme de terre','poireau'],
+   n:{fr:'Soupe douce poireau-pomme de terre',vi:'Súp tỏi tây khoai tây'},time:30,serves:4,
+   ing:{fr:['2 poireaux','3 pommes de terre','1 carotte','Bouillon de légumes'],
+        vi:['2 cây tỏi tây','3 củ khoai tây','1 củ cà rốt','Nước dùng rau củ']},
+   step:{fr:['Émincer et faire suer les légumes.','Couvrir de bouillon, cuire 20 min.','Mixer jusqu’à obtenir une texture veloutée.'],
+         vi:['Cắt nhỏ và xào sơ rau củ.','Đổ nước dùng, nấu 20 phút.','Xay nhuyễn mịn.']},
+   why:{fr:'Hydratant, léger, parfait le soir. Riche en fibres.',vi:'Nhẹ bụng, nhiều nước, hợp buổi tối. Giàu chất xơ.'}},
+
+  {e:'🍠',cuisine:'other',crav:'salty',ings:['patate douce','oeuf','epinard'],
+   n:{fr:'Bowl patate douce & œuf poché ferme',vi:'Bowl khoai lang & trứng'},time:25,serves:2,
+   ing:{fr:['1 patate douce','2 œufs bien cuits','Épinards','Graines, huile d’olive'],
+        vi:['1 củ khoai lang','2 quả trứng chín kỹ','Rau chân vịt','Hạt, dầu ô liu']},
+   step:{fr:['Rôtir la patate douce en cubes.','Faire tomber les épinards.','Cuire les œufs bien fermes.','Assembler et parsemer de graines.'],
+         vi:['Nướng khoai lang cắt khối.','Xào rau chân vịt.','Luộc trứng chín kỹ.','Xếp bowl và rắc hạt.']},
+   why:{fr:'Bêta-carotène, fer et protéines complètes.',vi:'Beta-caroten, sắt và đạm đầy đủ.'}}
+];
+
+/* ---------- EXERCISES ---------- */
+const EXOS=[
+  {e:'🚶‍♀️',tri:[1,2,3],n:{fr:'Marche douce',vi:'Đi bộ nhẹ'},
+   d:{fr:'20 à 30 min par jour, à ton rythme. Idéal du début à la fin.',vi:'20–30 phút mỗi ngày, theo nhịp của bạn. Tốt suốt thai kỳ.'},
+   safe:{fr:'Chaussures confortables, hydrate-toi, évite la chaleur.',vi:'Giày thoải mái, uống nước, tránh nắng nóng.'}},
+  {e:'🧘‍♀️',tri:[1,2,3],n:{fr:'Yoga prénatal',vi:'Yoga bầu'},
+   d:{fr:'Étirements doux et respiration. Soulage le dos.',vi:'Kéo giãn nhẹ và hít thở. Giảm đau lưng.'},
+   safe:{fr:'Évite les torsions profondes et le ventre au sol.',vi:'Tránh vặn mình sâu và nằm sấp.'}},
+  {e:'🏊‍♀️',tri:[1,2,3],n:{fr:'Natation & aquagym',vi:'Bơi & thể dục dưới nước'},
+   d:{fr:'L’eau porte ton poids et soulage les articulations.',vi:'Nước nâng đỡ cơ thể, giảm áp lực khớp.'},
+   safe:{fr:'Eau propre, évite les plongeons.',vi:'Nước sạch, tránh nhảy cắm đầu.'}},
+  {e:'🌸',tri:[1,2,3],n:{fr:'Périnée (Kegel)',vi:'Bài tập sàn chậu (Kegel)'},
+   d:{fr:'Contracte le périnée 5 s, relâche. 10 fois, plusieurs fois/jour.',vi:'Co cơ sàn chậu 5 giây rồi thả. 10 lần, vài lần/ngày.'},
+   safe:{fr:'Respire normalement, ne bloque pas ta respiration.',vi:'Thở đều, đừng nín thở.'}},
+  {e:'🤸‍♀️',tri:[1,2],n:{fr:'Étirements doux',vi:'Kéo giãn nhẹ'},
+   d:{fr:'Cou, épaules, hanches : relâche les tensions.',vi:'Cổ, vai, hông: thư giãn cơ.'},
+   safe:{fr:'Sans à-coups, jamais jusqu’à la douleur.',vi:'Nhẹ nhàng, không gắng đến mức đau.'}},
+  {e:'🪑',tri:[2,3],n:{fr:'Bascule du bassin sur ballon',vi:'Nghiêng khung chậu trên bóng'},
+   d:{fr:'Assise sur un ballon, bascule doucement le bassin.',vi:'Ngồi trên bóng, nghiêng khung chậu nhẹ.'},
+   safe:{fr:'Ballon adapté à ta taille, dos droit.',vi:'Bóng vừa cỡ, giữ lưng thẳng.'}},
+  {e:'💨',tri:[3],n:{fr:'Respiration de préparation',vi:'Hít thở chuẩn bị sinh'},
+   d:{fr:'Inspire par le nez, expire lentement par la bouche.',vi:'Hít vào bằng mũi, thở ra chậm bằng miệng.'},
+   safe:{fr:'Assise confortablement. Idéale avant l’accouchement.',vi:'Ngồi thoải mái. Rất tốt trước khi sinh.'}},
+  {e:'🦵',tri:[2,3],n:{fr:'Renforcement doux des jambes',vi:'Tăng cơ chân nhẹ'},
+   d:{fr:'Mini-squats en te tenant à une chaise.',vi:'Squat nhẹ, vịn ghế để giữ thăng bằng.'},
+   safe:{fr:'Ne descends pas trop bas, appui stable.',vi:'Không ngồi quá thấp, tựa chắc chắn.'}}
+];
+
+/* ============================================================
+   DATE MATH
+============================================================ */
+function computeWeek(){
+  const dd=store.get('dueDate',null);
+  if(!dd) return null;
+  const due=new Date(dd+'T00:00:00');
+  const today=new Date(); today.setHours(0,0,0,0);
+  const msDay=86400000;
+  const daysLeft=Math.round((due-today)/msDay);
+  const daysPreg=280-daysLeft;                 // 40 weeks = 280 days
+  let week=Math.floor(daysPreg/7);
+  week=Math.max(0,Math.min(42,week));
+  const pct=Math.max(0,Math.min(100,Math.round((daysPreg/280)*100)));
+  const tri = week<14?0 : week<28?1 : 2;
+  return {week,daysLeft:Math.max(0,daysLeft),pct,tri,due};
+}
+
+/* ============================================================
+   RENDER
+============================================================ */
+const V=$('#views');
+let viewWeek=null; // week shown in "baby now" navigator
+
+function render(){
+  document.documentElement.lang = lang==='vi'?'vi':'fr';
+  $('[data-i="tagline"]').textContent=T(S.tagline);
+  renderTabbar();
+  if(tab==='suivi') renderSuivi();
+  else if(tab==='food') renderFood();
+  else if(tab==='recipes') renderRecipes();
+  else if(tab==='move') renderMove();
+}
+
+function renderTabbar(){
+  const bar=$('#tabbar'); bar.innerHTML='';
+  const icons={
+    suivi:'<path d="M12 21c-5-3.5-8-7-8-11a5 5 0 019-3 5 5 0 019 3c0 4-3 7.5-8 11-.6.4-1.4.4-2 0z"/>',
+    food:'<path d="M6 3v8m0 0a2 2 0 002-2V3M4 3v6m14-6c-1.5 0-3 2-3 5s1 3 3 3m0 0v7"/>',
+    recipes:'<path d="M4 19h16M6 19V9a6 6 0 0112 0v10M9 9V7a3 3 0 016 0v2"/>',
+    move:'<circle cx="12" cy="5" r="2"/><path d="M12 8v6m0 0l-3 5m3-5l3 5m-6-8h6"/>'
+  };
+  ['suivi','food','recipes','move'].forEach(k=>{
+    const b=el('button','tab');
+    b.setAttribute('aria-pressed',tab===k);
+    b.innerHTML=`<span class="ib"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[k]}</svg></span><span>${esc(T(S.tabs[k]))}</span>`;
+    b.onclick=()=>{tab=k;window.scrollTo(0,0);render();};
+    bar.appendChild(b);
+  });
+}
+
+/* ---- SUIVI ---- */
+function renderSuivi(){
+  const info=computeWeek();
+  V.innerHTML='';
+  if(!info){ V.appendChild(setupCard()); V.appendChild(discl()); return; }
+  if(viewWeek==null) viewWeek=Math.max(4,Math.min(40,info.week||4));
+
+  // hero
+  const hero=el('div','card hero tinted');
+  hero.innerHTML=`
+    <div class="blob" style="width:120px;height:120px;background:var(--sakura-soft);top:-40px;right:-30px"></div>
+    <div class="blob" style="width:90px;height:90px;background:var(--bamboo-soft);bottom:-30px;left:-20px"></div>
+    <div style="position:relative">
+      <div class="tri">${esc(T(S.trimester)[info.tri])}</div>
+      <div class="week-big">${info.week} <span>${esc(T(S.week_label))}</span></div>
+      <div class="progress"><i style="width:${info.pct}%"></i></div>
+      <div class="countdown">
+        <div class="cd"><b>${info.week}</b><small>${esc(T(S.cd_weeks))}</small></div>
+        <div class="cd"><b>${info.daysLeft}</b><small>${esc(T(S.cd_left))}</small></div>
+        <div class="cd"><b>${info.pct}</b><small>${esc(T(S.cd_done))}</small></div>
+      </div>
+    </div>`;
+  V.appendChild(hero);
+
+  // baby now (navigable)
+  const baby=el('div','card');
+  const b=babyFor(viewWeek);
+  baby.innerHTML=`<p class="eyebrow"><span class="dot"></span>${esc(T(S.baby_now))}</p>
+    <div class="size-row">
+      <div class="size-emoji">${b.e}</div>
+      <div class="t"><b>${esc(T(S.baby_size))} ${esc(b[lang]||b.fr)}</b><span style="font-size:.88rem">${esc(T(b.d))}</span></div>
+    </div>
+    <div class="wk-nav">
+      <button data-d="-1" aria-label="−">‹</button>
+      <b>${esc(T(S.week_label))} ${viewWeek}</b>
+      <button data-d="1" aria-label="+">›</button>
+    </div>`;
+  baby.querySelectorAll('.wk-nav button').forEach(btn=>btn.onclick=()=>{
+    viewWeek=Math.max(4,Math.min(40,viewWeek+ +btn.dataset.d));renderSuivi();
+  });
+  V.appendChild(baby);
+
+  // journal for current week
+  const jr=el('div','card');
+  const jkey='journal_'+info.week;
+  jr.innerHTML=`<p class="eyebrow"><span class="dot"></span>${esc(T(S.journal))}</p>`;
+  const ta=el('textarea'); ta.placeholder=T(S.journal_ph); ta.value=store.get(jkey,'');
+  const jhint=el('div','disclaimer'); jhint.style.textAlign='left'; jhint.style.padding='6px 2px 0';
+  let jt;
+  ta.oninput=()=>{clearTimeout(jt);jt=setTimeout(()=>{store.set(jkey,ta.value);jhint.textContent=T(S.saved);},400);};
+  jr.appendChild(ta); jr.appendChild(jhint);
+  V.appendChild(jr);
+
+  // milestones
+  const ms=el('div','card');
+  ms.innerHTML=`<p class="eyebrow"><span class="dot"></span>${esc(T(S.milestones))}</p><p class="intro" style="margin:0 0 6px">${esc(T(S.ms_intro))}</p>`;
+  const done=store.get('milestones',{});
+  MILESTONES.forEach((m,i)=>{
+    const row=el('div','milestone'+(done[i]?' done':''));
+    row.innerHTML=`<div class="check">${done[i]?'✓':''}</div>
+      <div style="flex:1"><div class="m-t">${esc(T(m.t))}</div><div class="m-d">${esc(T(m.d))}</div>
+      <span class="m-wk">${esc(T(S.week_label))} ${m.w}</span></div>`;
+    row.querySelector('.check').onclick=()=>{done[i]=!done[i];store.set('milestones',done);renderSuivi();};
+    ms.appendChild(row);
+  });
+  V.appendChild(ms);
+
+  // edit date
+  const ed=el('button','btn soft'); ed.textContent=T(S.edit_date);
+  ed.style.margin='4px 0 8px';
+  ed.onclick=()=>{store.set('dueDate',null);viewWeek=null;renderSuivi();};
+  V.appendChild(ed);
+  V.appendChild(discl());
+}
+
+function setupCard(){
+  const c=el('div','card tinted');
+  c.innerHTML=`<h2 style="margin:0 0 8px;font-size:1.5rem">${esc(T(S.setup_title))}</h2>
+    <p class="intro" style="margin:0 0 18px">${esc(T(S.setup_intro))}</p>`;
+  const seg=el('div','seg');
+  const modes=[['dd',T(S.mode_dd)],['lmp',T(S.mode_lmp)]];
+  let mode='dd';
+  modes.forEach(([k,label])=>{
+    const b=el('button',null,esc(label));b.setAttribute('aria-pressed',mode===k);
+    b.onclick=()=>{mode=k;seg.querySelectorAll('button').forEach((x,i)=>x.setAttribute('aria-pressed',modes[i][0]===mode));lab.textContent=mode==='dd'?T(S.by_dd):T(S.by_lmp);};
+    seg.appendChild(b);
+  });
+  c.appendChild(seg);
+  const f=el('div','field');f.style.marginTop='14px';
+  const lab=el('label','fld',esc(T(S.by_dd)));
+  const inp=el('input');inp.type='date';
+  f.appendChild(lab);f.appendChild(inp);c.appendChild(f);
+  const btn=el('button','btn',esc(T(S.save)));
+  btn.onclick=()=>{
+    if(!inp.value)return;
+    let due;
+    if(mode==='dd'){due=inp.value;}
+    else{const d=new Date(inp.value+'T00:00:00');d.setDate(d.getDate()+280);due=d.toISOString().slice(0,10);}
+    store.set('dueDate',due);viewWeek=null;renderSuivi();
+  };
+  c.appendChild(btn);
+  return c;
+}
+
+/* ---- FOOD ---- */
+let foodFilter='all',foodQuery='';
+function renderFood(){
+  V.innerHTML='';
+  const head=el('div','card tinted');
+  head.innerHTML=`<p class="eyebrow"><span class="dot"></span>${esc(T(S.tabs.food))}</p>
+    <h2 style="margin:0 0 6px;font-size:1.4rem">${esc(T(S.food_title))}</h2>
+    <p class="intro" style="margin:0 0 14px">${esc(T(S.food_intro))}</p>`;
+  const search=el('input');search.type='search';search.placeholder=T(S.search_food);search.value=foodQuery;
+  search.oninput=()=>{foodQuery=search.value;drawFoods();};
+  head.appendChild(search);
+  const seg=el('div','seg');seg.style.marginTop='12px';
+  [['all',T(S.f_all)],['ok',T(S.f_ok)],['warn',T(S.f_warn)],['no',T(S.f_no)]].forEach(([k,l])=>{
+    const b=el('button',null,esc(l));b.setAttribute('aria-pressed',foodFilter===k);
+    b.onclick=()=>{foodFilter=k;renderFood();};seg.appendChild(b);
+  });
+  head.appendChild(seg);
+  V.appendChild(head);
+  const list=el('div','card');list.id='foodList';V.appendChild(list);
+  drawFoods();
+  V.appendChild(discl());
+}
+function drawFoods(){
+  const list=$('#foodList');if(!list)return;list.innerHTML='';
+  const q=foodQuery.trim().toLowerCase();
+  const pl={ok:T(S.f_ok),warn:T(S.f_warn),no:T(S.f_no)};
+  const rows=FOODS.filter(f=>(foodFilter==='all'||f.s===foodFilter)&&(!q||T(f.n).toLowerCase().includes(q)||T(f.r).toLowerCase().includes(q)));
+  if(!rows.length){list.innerHTML=`<p class="empty">${esc(T(S.no_result))}</p>`;return;}
+  rows.forEach(f=>{
+    const bg=f.s==='ok'?'var(--ok-bg)':f.s==='warn'?'var(--warn-bg)':'var(--no-bg)';
+    const row=el('div','food');
+    row.innerHTML=`<div class="ic" style="background:${bg}">${f.e}</div>
+      <div class="n"><b>${esc(T(f.n))}</b><span>${esc(T(f.r))}</span></div>
+      <span class="pill ${f.s}">${esc(pl[f.s])}</span>`;
+    list.appendChild(row);
+  });
+}
+
+/* ---- RECIPES ---- */
+let recCuisine='any',recCrav='any',recIng='any',recFav=false;
+function renderRecipes(){
+  V.innerHTML='';
+  const head=el('div','card tinted');
+  head.innerHTML=`<p class="eyebrow"><span class="dot"></span>${esc(T(S.tabs.recipes))}</p>
+    <h2 style="margin:0 0 6px;font-size:1.4rem">${esc(T(S.rec_title))}</h2>
+    <p class="intro" style="margin:0 0 14px">${esc(T(S.rec_intro))}</p>`;
+
+  const cuisines={any:S.any,vi:{fr:'Vietnamienne',vi:'Việt Nam'},fr:{fr:'Française',vi:'Pháp'},other:{fr:'Autre',vi:'Khác'}};
+  const cravs={any:S.any,comfort:{fr:'Réconfort',vi:'Ấm bụng'},fresh:{fr:'Frais',vi:'Thanh mát'},sweet:{fr:'Sucré',vi:'Ngọt'},salty:{fr:'Salé',vi:'Mặn'}};
+  const ings={};RECIPES.forEach(r=>r.ings.forEach(i=>ings[i]=true));
+  const ingList=Object.keys(ings).sort();
+
+  head.appendChild(selField(T(S.cuisine),cuisines,recCuisine,v=>{recCuisine=v;renderRecipes();}));
+  head.appendChild(selField(T(S.craving),cravs,recCrav,v=>{recCrav=v;renderRecipes();}));
+  const ingOpts={any:S.any_ing};ingList.forEach(i=>ingOpts[i]={fr:i,vi:i});
+  head.appendChild(selField(T(S.ingredient),ingOpts,recIng,v=>{recIng=v;renderRecipes();}));
+
+  const favBtn=el('button','btn soft',esc(T(S.fav_only)));
+  favBtn.setAttribute('aria-pressed',recFav);
+  if(recFav){favBtn.style.background='var(--sakura-deep)';favBtn.style.color='#fff';}
+  favBtn.onclick=()=>{recFav=!recFav;renderRecipes();};
+  head.appendChild(favBtn);
+  V.appendChild(head);
+
+  const favs=store.get('favs',{});
+  const rows=RECIPES.filter(r=>
+    (recCuisine==='any'||r.cuisine===recCuisine)&&
+    (recCrav==='any'||r.crav===recCrav)&&
+    (recIng==='any'||r.ings.includes(recIng))&&
+    (!recFav||favs[T(r.n)]));
+  if(!rows.length){const e=el('div','card');e.innerHTML=`<p class="empty">${esc(T(S.no_result))}</p>`;V.appendChild(e);}
+  rows.forEach(r=>V.appendChild(recipeCard(r,favs)));
+  V.appendChild(discl());
+}
+function selField(label,opts,val,on){
+  const f=el('div','field');f.style.marginBottom='10px';
+  f.innerHTML=`<label class="fld">${esc(label)}</label>`;
+  const s=el('select');
+  Object.keys(opts).forEach(k=>{const o=el('option');o.value=k;o.textContent=T(opts[k]);if(k===val)o.selected=true;s.appendChild(o);});
+  s.onchange=()=>on(s.value);
+  f.appendChild(s);return f;
+}
+function recipeCard(r,favs){
+  const c=el('div','card rec');
+  const key=T(r.n);
+  const cuisineLabel={vi:{fr:'Vietnamienne',vi:'Việt Nam'},fr:{fr:'Française',vi:'Pháp'},other:{fr:'Autre',vi:'Khác'}}[r.cuisine];
+  const cravLabel={comfort:{fr:'Réconfort',vi:'Ấm bụng'},fresh:{fr:'Frais',vi:'Thanh mát'},sweet:{fr:'Sucré',vi:'Ngọt'},salty:{fr:'Salé',vi:'Mặn'}}[r.crav];
+  c.innerHTML=`
+    <div class="head">
+      <div class="thumb">${r.e}</div>
+      <div style="flex:1;min-width:0">
+        <h3>${esc(T(r.n))}</h3>
+        <div class="meta"><span>⏱ ${r.time} ${esc(T(S.mins))}</span><span>🍽 ${r.serves} ${esc(T(S.serves))}</span></div>
+      </div>
+      <button class="fav" aria-pressed="${!!favs[key]}" aria-label="favori">${favs[key]?'♥':'♡'}</button>
+    </div>
+    <div class="tags">
+      <span class="tag">${esc(T(cuisineLabel))}</span>
+      <span class="tag g">${esc(T(cravLabel))}</span>
+    </div>
+    <div class="body">
+      <h4>${esc(T(S.ingredients))}</h4>
+      <ul>${T(r.ing).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+      <h4>${esc(T(S.steps))}</h4>
+      <ol>${T(r.step).map(x=>`<li>${esc(x)}</li>`).join('')}</ol>
+      <div class="why">💚 ${esc(T(r.why))}</div>
+    </div>`;
+  const favBtn=c.querySelector('.fav');
+  favBtn.onclick=e=>{e.stopPropagation();const f=store.get('favs',{});f[key]=!f[key];store.set('favs',f);favBtn.setAttribute('aria-pressed',!!f[key]);favBtn.textContent=f[key]?'♥':'♡';};
+  c.querySelector('.head').onclick=()=>c.classList.toggle('open');
+  c.querySelector('.tags').onclick=()=>c.classList.toggle('open');
+  return c;
+}
+
+/* ---- MOVE ---- */
+let moveTri='all';
+function renderMove(){
+  V.innerHTML='';
+  const head=el('div','card tinted');
+  head.innerHTML=`<p class="eyebrow"><span class="dot"></span>${esc(T(S.tabs.move))}</p>
+    <h2 style="margin:0 0 6px;font-size:1.4rem">${esc(T(S.move_title))}</h2>
+    <p class="intro" style="margin:0 0 14px">${esc(T(S.move_intro))}</p>`;
+  const seg=el('div','seg');
+  [['all',T(S.all_tri)],['1',T(S.t1)],['2',T(S.t2)],['3',T(S.t3)]].forEach(([k,l])=>{
+    const b=el('button',null,esc(l));b.setAttribute('aria-pressed',moveTri===k);
+    b.onclick=()=>{moveTri=k;renderMove();};seg.appendChild(b);
+  });
+  head.appendChild(seg);V.appendChild(head);
+  const rows=EXOS.filter(x=>moveTri==='all'||x.tri.includes(+moveTri));
+  rows.forEach(x=>{
+    const c=el('div','card rec ex');
+    const triWord=lang==='vi'?'TCN':'Tri.';
+    const triLabels=x.tri.join(' · ');
+    c.innerHTML=`
+      <div class="head">
+        <div class="thumb">${x.e}</div>
+        <div style="flex:1;min-width:0"><h3>${esc(T(x.n))}</h3>
+        <div class="meta"><span class="pill ghost">${triWord} ${triLabels}</span></div></div>
+      </div>
+      <div style="padding:0 18px 16px">
+        <p style="margin:0;font-size:.94rem">${esc(T(x.d))}</p>
+        <div class="safe">⚠️ <span><b>${esc(T(S.safety))} :</b> ${esc(T(x.safe))}</span></div>
+      </div>`;
+    V.appendChild(c);
+  });
+  V.appendChild(discl());
+}
+
+function discl(){const d=el('p','disclaimer',esc(T(S.disclaimer)));return d;}
+
+/* ============================================================
+   CONTROLS
+============================================================ */
+document.querySelectorAll('.lang button').forEach(b=>{
+  b.onclick=()=>{
+    lang=b.dataset.lang;store.set('lang',lang);
+    document.querySelectorAll('.lang button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.lang===lang));
+    render();
+  };
+});
+document.querySelectorAll('.lang button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.lang===lang));
+
+const themeBtn=$('#themeBtn');
+function applyTheme(t){
+  if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);
+  else document.documentElement.removeAttribute('data-theme');
+  const isDark = t==='dark' || (t!=='light' && matchMedia('(prefers-color-scheme:dark)').matches);
+  themeBtn.textContent=isDark?'☀️':'🌙';
+}
+let theme=store.get('theme','system');
+applyTheme(theme);
+themeBtn.onclick=()=>{
+  theme = theme==='light'?'dark':theme==='dark'?'system':'light';
+  store.set('theme',theme);applyTheme(theme);
+};
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(store.get('theme','system')==='system')applyTheme('system');});
+
+render();
+</script>
