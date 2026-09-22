@@ -1,0 +1,1374 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plan de chargement chanvre</title>
+<style>
+/* ---------------------------------------------------------------
+   Jetons de couleur — thème clair par défaut, thème sombre en miroir.
+   Les couleurs produit encodent une information (famille), elles ne
+   sont pas décoratives.
+   --------------------------------------------------------------- */
+:root{
+  color-scheme: light;
+  --bg:#EDF0EA;
+  --surface:#FFFFFF;
+  --surface-2:#F5F8F1;
+  --line:#D6DCCD;
+  --line-strong:#B3BEA6;
+  --ink:#1B2118;
+  --ink-2:#4B5545;
+  --ink-3:#727D69;
+  --accent:#41652B;
+  --accent-ink:#FFFFFF;
+  --accent-soft:#E3EBD8;
+  --fibre:#A8712C;
+  --fibre-soft:#F1E3CE;
+  --chenevotte:#3E6A7E;
+  --chenevotte-soft:#DBE7ED;
+  --ok:#2E6F4A;   --ok-soft:#DBEBE1;
+  --warn:#8E6110; --warn-soft:#F6E8C9;
+  --crit:#A43325; --crit-soft:#F7DCD7;
+  --shadow:0 1px 2px rgba(27,33,24,.07), 0 10px 26px -20px rgba(27,33,24,.45);
+  --font-ui:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#11150F; --surface:#1A1F18; --surface-2:#222820; --line:#333B2E;
+    --line-strong:#4B5644; --ink:#E8EDE2; --ink-2:#B5C0AC; --ink-3:#8B9683;
+    --accent:#8FBE63; --accent-ink:#11150F; --accent-soft:#26331B;
+    --fibre:#D9A25C; --fibre-soft:#3A2D1A;
+    --chenevotte:#7FB3CC; --chenevotte-soft:#1B2C35;
+    --ok:#6FBF8E; --ok-soft:#1C3125;
+    --warn:#D9A93F; --warn-soft:#352A11;
+    --crit:#E0715F; --crit-soft:#3A1E19;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 26px -20px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#11150F; --surface:#1A1F18; --surface-2:#222820; --line:#333B2E;
+  --line-strong:#4B5644; --ink:#E8EDE2; --ink-2:#B5C0AC; --ink-3:#8B9683;
+  --accent:#8FBE63; --accent-ink:#11150F; --accent-soft:#26331B;
+  --fibre:#D9A25C; --fibre-soft:#3A2D1A;
+  --chenevotte:#7FB3CC; --chenevotte-soft:#1B2C35;
+  --ok:#6FBF8E; --ok-soft:#1C3125;
+  --warn:#D9A93F; --warn-soft:#352A11;
+  --crit:#E0715F; --crit-soft:#3A1E19;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 26px -20px rgba(0,0,0,.9);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:var(--font-ui); font-size:15px; line-height:1.5;
+  -webkit-text-size-adjust:100%;
+}
+img{max-width:100%}
+[hidden]{display:none!important}
+h1,h2,h3{text-wrap:balance;margin:0}
+button,input,select{font:inherit;color:inherit}
+:where(a,button,input,select,summary):focus-visible{
+  outline:2px solid var(--accent); outline-offset:2px; border-radius:4px;
+}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.eyebrow{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-3);
+}
+
+/* ------------------------------- Barre haute ------------------------------ */
+.topbar{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:30;
+  background:var(--surface); border-bottom:1px solid var(--line);
+}
+.topbar-in{
+  max-width:1360px; margin:0 auto; padding-block:10px; padding-inline:16px;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
+.brand-mark{
+  width:30px;height:30px;border-radius:7px;background:var(--accent);
+  display:grid;place-items:center;flex:none;
+}
+.brand-mark svg{display:block}
+.brand-name{font-size:15px;font-weight:650;letter-spacing:-.01em;white-space:nowrap}
+.brand-sub{font-size:11.5px;color:var(--ink-3);white-space:nowrap}
+.tabs{display:flex;gap:2px;background:var(--surface-2);padding:3px;border-radius:9px;border:1px solid var(--line)}
+.tab{
+  border:0;background:transparent;padding:6px 13px;border-radius:7px;cursor:pointer;
+  font-size:13.5px;font-weight:550;color:var(--ink-2);
+}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.icon-btn{
+  border:1px solid var(--line); background:var(--surface); color:var(--ink-2);
+  width:36px;height:36px;border-radius:9px;cursor:pointer;display:grid;place-items:center;
+}
+.icon-btn:hover{border-color:var(--line-strong);color:var(--ink)}
+.btn{
+  border:1px solid var(--line); background:var(--surface); color:var(--ink);
+  padding:8px 14px; border-radius:9px; cursor:pointer; font-size:13.5px; font-weight:550;
+}
+.btn:hover{border-color:var(--line-strong)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn-primary:hover{filter:brightness(1.06)}
+.btn-sm{padding:5px 10px;font-size:12.5px;border-radius:7px}
+
+/* --------------------------------- Page ---------------------------------- */
+.wrap{max-width:1360px;margin:0 auto;padding-inline:16px;padding-block:20px 56px}
+.cols{display:grid;grid-template-columns:minmax(0,370px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:1040px){.cols{grid-template-columns:minmax(0,1fr)}}
+
+.panel{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  box-shadow:var(--shadow);
+}
+.panel-head{
+  display:flex;align-items:baseline;gap:10px;
+  padding:14px 16px 0 16px;
+}
+.panel-head h2{font-size:14.5px;font-weight:650;letter-spacing:-.01em}
+.panel-body{padding:14px 16px 16px 16px;display:flex;flex-direction:column;gap:16px}
+.setup{position:sticky;top:calc(env(safe-area-inset-top,0px) + 68px)}
+@media (max-width:1040px){.setup{position:static}}
+
+.field{display:flex;flex-direction:column;gap:7px}
+.field > .eyebrow{margin-bottom:-1px}
+.hint{font-size:12px;color:var(--ink-3);line-height:1.45}
+
+/* Choix du conteneur : cartes radio */
+.cont-list{display:flex;flex-direction:column;gap:8px}
+.cont{
+  display:grid; grid-template-columns:auto minmax(0,1fr); gap:11px; align-items:start;
+  border:1px solid var(--line); border-radius:9px; padding:11px 12px; cursor:pointer;
+  background:var(--surface-2);
+}
+.cont:hover{border-color:var(--line-strong)}
+.cont:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.cont input{margin:3px 0 0 0;accent-color:var(--accent);width:16px;height:16px}
+.cont-name{display:block;font-size:13.5px;font-weight:600}
+.cont-specs{display:block;font-size:11.5px;color:var(--ink-2);font-family:var(--font-mono);margin-top:3px;line-height:1.35}
+
+/* Lignes produit */
+.lines{display:flex;flex-direction:column;gap:9px}
+.line{
+  border:1px solid var(--line); border-radius:9px; padding:10px 11px;
+  background:var(--surface-2); display:flex; flex-direction:column; gap:9px;
+}
+.line-top{display:flex;gap:8px;align-items:center}
+.swatch{width:11px;height:26px;border-radius:3px;flex:none}
+select,input[type=number],input[type=text]{
+  width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:7px;
+  background:var(--surface); font-size:13.5px; min-width:0;
+}
+.line-qty{display:flex;gap:8px;align-items:center}
+.line-qty .qty{width:96px;flex:none;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.chk{display:inline-flex;align-items:flex-start;gap:6px;font-size:12.5px;color:var(--ink-2);cursor:pointer;line-height:1.35}
+.chk input{margin-top:1px;flex:none}
+.chk input{accent-color:var(--accent);width:15px;height:15px;margin:0}
+.line-del{
+  margin-left:auto;border:0;background:transparent;color:var(--ink-3);cursor:pointer;
+  font-size:12.5px;padding:2px 4px;
+}
+.line-del:hover{color:var(--crit)}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* --------------------------- Bandeau de synthèse -------------------------- */
+.summary{
+  display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1px;
+  background:var(--line); border:1px solid var(--line); border-radius:var(--r);
+  overflow:hidden; box-shadow:var(--shadow);
+}
+@media (max-width:700px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--surface);padding:13px 14px 12px}
+.stat-v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:24px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.stat-u{font-size:13px;font-weight:500;color:var(--ink-3);margin-left:3px}
+.stat-l{font-size:11.5px;color:var(--ink-3);margin-top:3px}
+.meter{height:4px;border-radius:2px;background:var(--line);margin-top:9px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:2px}
+.meter.is-warn i{background:var(--warn)} .meter.is-crit i{background:var(--crit)}
+
+/* Alertes */
+.alerts{display:flex;flex-direction:column;gap:8px}
+.alert{
+  display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start;
+  border:1px solid var(--line);border-left-width:4px;border-radius:8px;padding:10px 12px;
+  font-size:13px;background:var(--surface);
+}
+.alert b{display:block;font-weight:620;margin-bottom:1px}
+.alert.crit{border-left-color:var(--crit);background:var(--crit-soft)}
+.alert.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.alert.ok{border-left-color:var(--ok);background:var(--ok-soft)}
+.alert .tag{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;padding-top:2px}
+.alert.crit .tag{color:var(--crit)} .alert.warn .tag{color:var(--warn)} .alert.ok .tag{color:var(--ok)}
+
+/* Schémas */
+.plan-figure{padding:6px 14px 14px}
+.figure-head{display:flex;align-items:baseline;gap:9px;padding:13px 14px 0;flex-wrap:wrap}
+.figure-head h3{font-size:13.5px;font-weight:650}
+.figure-head .hint{margin-left:auto}
+.svg-scroll{overflow-x:auto;padding-bottom:4px}
+.svg-scroll svg{display:block;min-width:520px;width:100%;height:auto}
+.legend{display:flex;gap:14px;flex-wrap:wrap;padding:0 14px 14px;font-size:12px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:block;border:1px solid rgba(0,0,0,.18)}
+
+/* Étapes */
+.steps{display:flex;flex-direction:column;gap:0}
+.step{
+  display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;gap:13px;align-items:start;
+  padding:13px 14px;border-top:1px solid var(--line);cursor:pointer;
+}
+.step:first-child{border-top:0}
+.step:hover{background:var(--surface-2)}
+.step.is-active{background:var(--accent-soft)}
+.step.is-done .step-title,.step.is-done .step-detail{text-decoration:line-through;color:var(--ink-3)}
+.step-chk{width:22px;height:22px;accent-color:var(--accent);margin:1px 0 0;flex:none}
+.step-n{
+  font-family:var(--font-mono);font-size:12px;font-weight:600;min-width:2.6em;text-align:center;
+  padding:3px 6px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);
+  color:var(--ink-2);margin-top:1px;
+}
+.step.is-load .step-n{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.step-title{font-size:14.5px;font-weight:600;letter-spacing:-.005em}
+.step-detail{font-size:13px;color:var(--ink-2);margin-top:3px}
+.step-meta{
+  font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3);margin-top:5px;
+  font-variant-numeric:tabular-nums;
+}
+.step-badge{
+  font-family:var(--font-mono);font-size:11.5px;font-variant-numeric:tabular-nums;
+  text-align:right;color:var(--ink-2);white-space:nowrap;margin-top:2px;
+}
+.step-badge b{display:block;font-size:13.5px;color:var(--ink);font-weight:600}
+
+.progress{display:flex;align-items:center;gap:11px;padding:12px 14px;border-top:1px solid var(--line);background:var(--surface-2)}
+.progress .meter{flex:1;margin:0;height:6px}
+
+/* Catalogue */
+.table-scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:500;white-space:nowrap}
+td input{padding:5px 7px;font-size:13px}
+td input[type=number]{width:92px;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+td input[type=text]{min-width:190px}
+.fam{font-family:var(--font-mono);font-size:11px;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.fam.fibre{background:var(--fibre-soft);color:var(--fibre)}
+.fam.chenevotte{background:var(--chenevotte-soft);color:var(--chenevotte)}
+
+.callout{
+  border:1px dashed var(--line-strong);border-radius:9px;padding:11px 13px;
+  font-size:12.5px;color:var(--ink-2);background:var(--surface-2);
+}
+.callout b{color:var(--ink)}
+.stack{display:flex;flex-direction:column;gap:20px;min-width:0}
+.empty{padding:34px 18px;text-align:center;color:var(--ink-3);font-size:13.5px}
+
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+/* ------------------------------- Impression ------------------------------- */
+@media print{
+  :root{--bg:#fff;--surface:#fff;--surface-2:#fff;--line:#999;--ink:#000;--ink-2:#222;--ink-3:#555;
+        --accent:#000;--accent-soft:#fff;--accent-ink:#fff;--shadow:none}
+  .topbar,.setup,.no-print{display:none!important}
+  .wrap{padding:0;max-width:none}
+  .cols{grid-template-columns:1fr;gap:10px}
+  .panel{border:1px solid #999;box-shadow:none;break-inside:avoid}
+  .summary{box-shadow:none}
+  .step{break-inside:avoid;padding:7px 10px}
+  .step-chk{-webkit-appearance:none;appearance:none;border:1.5px solid #000;border-radius:3px;background:#fff}
+  .svg-scroll svg{min-width:0}
+  .print-head{display:block!important}
+}
+.print-head{display:none;margin-bottom:12px}
+.print-head h1{font-size:19px}
+.print-sign{display:none}
+@media print{
+  .print-sign{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:14px;font-size:11px}
+  .print-sign div{border-top:1px solid #000;padding-top:4px}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar no-print">
+  <div class="topbar-in">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="6" width="20" height="12" rx="1"></rect>
+          <path d="M6 6v12M10 6v12M14 6v12M18 6v12"></path>
+        </svg>
+      </span>
+      <span>
+        <span class="brand-name">Plan de chargement chanvre</span><br>
+        <span class="brand-sub">Empotage conteneur &middot; fibre &amp; chènevotte</span>
+      </span>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" id="tab-plan" aria-selected="true" aria-controls="view-plan">Plan</button>
+      <button class="tab" role="tab" id="tab-cat" aria-selected="false" aria-controls="view-cat">Catalogue</button>
+    </div>
+    <button class="btn btn-primary" id="btn-print">Imprimer le plan</button>
+    <button class="icon-btn" id="btn-theme" title="Changer de thème" aria-label="Changer de thème">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <circle cx="12" cy="12" r="4"></circle>
+        <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"></path>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============================ VUE PLAN ============================ -->
+  <div id="view-plan" role="tabpanel" aria-labelledby="tab-plan">
+    <div class="cols">
+
+      <!-- ---------------------- Colonne configuration ---------------------- -->
+      <aside class="panel setup no-print">
+        <div class="panel-head"><h2>Préparer le chargement</h2></div>
+        <div class="panel-body">
+
+          <div class="field">
+            <span class="eyebrow">1 &middot; Conteneur</span>
+            <div class="cont-list" id="cont-list"></div>
+          </div>
+
+          <div class="field">
+            <span class="eyebrow">2 &middot; Produits à charger</span>
+            <div class="lines" id="lines"></div>
+            <button class="btn btn-sm" id="btn-add-line" style="align-self:flex-start">+ Ajouter un produit</button>
+          </div>
+
+          <div class="field">
+            <span class="eyebrow">3 &middot; Réglages</span>
+            <div class="opts">
+              <label class="field">
+                <span class="hint">Charge utile retenue (kg)</span>
+                <input type="number" id="opt-payload" min="1000" max="32000" step="100">
+              </label>
+              <label class="field">
+                <span class="hint">Jeu latéral total (mm)</span>
+                <input type="number" id="opt-clearw" min="0" max="400" step="10">
+              </label>
+              <label class="field">
+                <span class="hint">Jeu sous plafond (mm)</span>
+                <input type="number" id="opt-clearh" min="0" max="400" step="10">
+              </label>
+              <label class="field">
+                <span class="hint">Jeu devant portes (mm)</span>
+                <input type="number" id="opt-clearl" min="0" max="600" step="10">
+              </label>
+            </div>
+            <label class="chk"><input type="checkbox" id="opt-balance"> Équilibrer automatiquement la charge sur la longueur</label>
+            <label class="chk"><input type="checkbox" id="opt-compact"> Plan condensé (regrouper les rangs identiques)</label>
+          </div>
+
+          <div class="callout">
+            <b>Les cotes ne sont pas gravées dans le marbre.</b> Dimensions, poids et hauteur de gerbage de chaque produit se modifient dans l'onglet <b>Catalogue</b>&nbsp;; vos valeurs sont conservées sur cet appareil.
+          </div>
+        </div>
+      </aside>
+
+      <!-- ------------------------- Colonne résultat ------------------------ -->
+      <main class="stack">
+
+        <div class="print-head">
+          <div class="eyebrow">Plan d'empotage &middot; à conserver avec le dossier d'expédition</div>
+          <h1 id="print-title">Plan de chargement</h1>
+          <div class="hint" id="print-sub"></div>
+        </div>
+
+        <div class="summary" id="summary"></div>
+
+        <div class="alerts" id="alerts"></div>
+
+        <section class="panel">
+          <div class="figure-head">
+            <h3>Vue de dessus</h3>
+            <span class="hint" id="top-note"></span>
+          </div>
+          <div class="plan-figure"><div class="svg-scroll" id="svg-top"></div></div>
+          <div class="legend" id="legend"></div>
+        </section>
+
+        <section class="panel">
+          <div class="figure-head">
+            <h3>Vue de côté</h3>
+            <span class="hint">Hauteur d'empilage et position du centre de gravité.</span>
+          </div>
+          <div class="plan-figure"><div class="svg-scroll" id="svg-side"></div></div>
+        </section>
+
+        <section class="panel">
+          <div class="figure-head">
+            <h3>Marche à suivre</h3>
+            <span class="hint no-print">Touchez une étape pour la repérer sur les schémas, cochez-la une fois faite.</span>
+          </div>
+          <div class="steps" id="steps"></div>
+          <div class="progress no-print">
+            <span class="eyebrow" id="progress-label">0 / 0 étapes</span>
+            <span class="meter"><i id="progress-bar" style="width:0%"></i></span>
+            <button class="btn btn-sm" id="btn-reset-steps">Tout décocher</button>
+          </div>
+          <div class="print-sign">
+            <div>Opérateur &mdash; nom et signature</div>
+            <div>N° de conteneur</div>
+            <div>N° de plomb &middot; date</div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ========================== VUE CATALOGUE ========================== -->
+  <div id="view-cat" role="tabpanel" aria-labelledby="tab-cat" hidden>
+    <div class="stack">
+
+      <section class="panel">
+        <div class="figure-head">
+          <h3>Produits</h3>
+          <span class="hint">Cotes de l'unité manutentionnée, hors film. Le gerbage est le nombre de niveaux superposables.</span>
+        </div>
+        <div class="plan-figure">
+          <div class="table-scroll">
+            <table id="tbl-prod">
+              <thead><tr>
+                <th>Désignation</th><th>Famille</th><th>Unité</th>
+                <th>Long. (mm)</th><th>Larg. (mm)</th><th>Haut. (mm)</th>
+                <th>Poids (kg)</th><th>Gerbage</th><th>Manutention</th><th></th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <button class="btn btn-sm" id="btn-add-prod">+ Nouveau produit</button>
+            <button class="btn btn-sm" id="btn-reset-cat">Rétablir les valeurs d'origine</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="figure-head">
+          <h3>Conteneurs</h3>
+          <span class="hint">Dimensions intérieures. La charge utile dépend du conteneur réel&nbsp;: vérifiez la plaque CSC.</span>
+        </div>
+        <div class="plan-figure">
+          <div class="table-scroll">
+            <table id="tbl-cont">
+              <thead><tr>
+                <th>Type</th><th>Long. int. (mm)</th><th>Larg. int. (mm)</th><th>Haut. int. (mm)</th>
+                <th>Porte L (mm)</th><th>Porte H (mm)</th><th>Tare (kg)</th><th>Charge utile (kg)</th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="figure-head"><h3>D'où viennent ces chiffres</h3></div>
+        <div class="plan-figure">
+          <p class="hint" style="max-width:68ch">
+            Les conteneurs reprennent les cotes normalisées ISO les plus courantes (masse brute maximale 30&nbsp;480&nbsp;kg).
+            Les produits sont des <b>valeurs de départ plausibles</b>, pas des relevés d'atelier&nbsp;: pesez une balle et une
+            palette réelles, mesurez-les et corrigez le tableau ci-dessus avant d'utiliser le plan en production.
+            Une erreur de 20&nbsp;kg sur une balle fait 2&nbsp;t d'écart sur un 40&nbsp;pieds.
+          </p>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   1. RÉFÉRENTIEL
+   Conteneurs : cotes intérieures ISO courantes, masse brute max 30 480 kg.
+   Produits   : valeurs de départ plausibles, à corriger dans le Catalogue.
+   ===================================================================== */
+
+const CONTAINERS_DEF = [
+  {id:"20dry", name:"Conteneur 20 pieds Dry",       short:"20'",     len:5898,  wid:2352, hei:2393, doorW:2343, doorH:2280, tare:2230, payload:28250},
+  {id:"40dry", name:"Conteneur 40 pieds Dry",       short:"40'",     len:12032, wid:2352, hei:2393, doorW:2343, doorH:2280, tare:3750, payload:26730},
+  {id:"40hc",  name:"Conteneur 40 pieds High Cube", short:"40' HC",  len:12032, wid:2352, hei:2698, doorW:2343, doorH:2585, tare:3900, payload:26580}
+];
+
+const PRODUCTS_DEF = [
+  {id:"fibre-std", name:"Balle de fibre pressée — standard",        short:"Fibre standard",      family:"fibre",      unit:"balle",   len:1100, wid:700,  hei:800,  weight:300, stack:3, handling:"pince"},
+  {id:"fibre-hd",  name:"Balle de fibre pressée — haute densité",   short:"Fibre haute densité", family:"fibre",      unit:"balle",   len:1200, wid:700,  hei:750,  weight:420, stack:3, handling:"pince"},
+  {id:"chen-pal",  name:"Palette de sacs de chènevotte (20 kg)",    short:"Chènevotte en sacs",  family:"chenevotte", unit:"palette", len:1200, wid:800,  hei:1750, weight:820, stack:1, handling:"chariot"},
+  {id:"chen-bb",   name:"Big-bag de chènevotte 1 m³",               short:"Chènevotte big-bag",  family:"chenevotte", unit:"big-bag", len:1000, wid:1000, hei:1350, weight:130, stack:2, handling:"chariot"},
+  {id:"lit-pal",   name:"Palette de litière / paillis conditionné", short:"Litière palettisée",  family:"chenevotte", unit:"palette", len:1200, wid:800,  hei:1600, weight:640, stack:1, handling:"chariot"}
+];
+
+/* ========================= 2. OUTILS ================================= */
+
+const nf  = new Intl.NumberFormat("fr-FR");
+const nf1 = new Intl.NumberFormat("fr-FR", {minimumFractionDigits:1, maximumFractionDigits:1});
+const nf2 = new Intl.NumberFormat("fr-FR", {minimumFractionDigits:2, maximumFractionDigits:2});
+const $   = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const plural = (n, w) => n > 1 ? w + "s" : w;
+
+const clone = o => JSON.parse(JSON.stringify(o));
+
+function store(key, value){
+  try{
+    if(value === undefined) { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; }
+    localStorage.setItem(key, JSON.stringify(value));
+  }catch(e){ /* navigation privée, stockage bloqué : on continue sans mémoire */ }
+  return null;
+}
+
+/* ========================= 3. ÉTAT =================================== */
+
+let CONTAINERS = store("pcc-cont-v1") || clone(CONTAINERS_DEF);
+let PRODUCTS   = store("pcc-prod-v1") || clone(PRODUCTS_DEF);
+
+const saved = store("pcc-config-v1");
+const state = {
+  containerId: "40hc",
+  lines: [{productId:"fibre-std", qty:null, max:true}],
+  opt: {payload:null, clearW:60, clearH:50, clearL:100, balance:true, compact:false},
+  done: new Set(),
+  active: null,
+  tab: "plan"
+};
+if(saved){
+  if(saved.containerId) state.containerId = saved.containerId;
+  if(Array.isArray(saved.lines) && saved.lines.length) state.lines = saved.lines;
+  if(saved.opt) Object.assign(state.opt, saved.opt);
+}
+
+const getCont = () => CONTAINERS.find(c => c.id === state.containerId) || CONTAINERS[0];
+const getProd = id => PRODUCTS.find(p => p.id === id);
+const famColor = f => f === "fibre" ? "var(--fibre)" : "var(--chenevotte)";
+const famSoft  = f => f === "fibre" ? "var(--fibre-soft)" : "var(--chenevotte-soft)";
+
+function persist(){
+  store("pcc-config-v1", {containerId:state.containerId, lines:state.lines, opt:state.opt});
+}
+
+/* ========================= 4. CALAGE DES UNITÉS ======================= */
+/* Deux orientations au sol seulement : on ne couche pas une palette.
+   On retient celle qui loge le plus d'unités par mètre de conteneur.    */
+
+function fitProduct(p, c, o){
+  if(!(p.len > 0 && p.wid > 0 && p.hei > 0)) return null;
+  const usableW = c.wid - o.clearW;
+  const usableH = c.hei - o.clearH;
+  const options = [
+    {a:p.len, b:p.wid, sens:"dans le sens de la longueur"},
+    {a:p.wid, b:p.len, sens:"en travers"}
+  ];
+  const out = [];
+  for(const t of options){
+    const across = Math.floor(usableW / t.b);
+    const layers = Math.min(Math.floor(usableH / p.hei), Math.max(1, p.stack|0));
+    if(across < 1 || layers < 1) continue;
+    out.push({sens:t.sens, across, layers, perSection: across * layers, depth: t.a,
+              perMetre: (across * layers) / t.a});
+  }
+  if(!out.length) return null;
+  out.sort((x, y) => y.perMetre - x.perMetre || y.across - x.across);
+  const best = out[0];
+  best.alt = out[1] || null;   // orientation de repli pour le dernier rang
+  return best;
+}
+
+/* ========================= 5. PLAN DE CHARGEMENT ====================== */
+
+function permutations(arr){
+  if(arr.length <= 1) return [arr.slice()];
+  const res = [];
+  arr.forEach((v, i) => {
+    const rest = arr.slice(0, i).concat(arr.slice(i + 1));
+    for(const p of permutations(rest)) res.push([v].concat(p));
+  });
+  return res;
+}
+
+function cogOf(rangs){
+  let m = 0, w = 0, pos = 0;
+  for(const r of rangs){ m += (pos + r.depth / 2) * r.weight; w += r.weight; pos += r.depth; }
+  return w ? m / w : 0;
+}
+
+/* Cherche l'agencement des blocs produit qui centre le mieux la charge. */
+function balanceBlocks(rangs, targetX){
+  const blocks = [];
+  for(const r of rangs){
+    const last = blocks[blocks.length - 1];
+    if(last && last.pid === r.p.id) last.rangs.push(r);
+    else blocks.push({pid:r.p.id, rangs:[r]});
+  }
+  if(blocks.length < 2 || blocks.length > 3) return rangs;
+
+  const variants = [blocks];
+  const heaviest = blocks.slice().sort((a, b) =>
+    b.rangs.reduce((s, r) => s + r.weight, 0) - a.rangs.reduce((s, r) => s + r.weight, 0))[0];
+  if(heaviest.rangs.length >= 2 && blocks.length <= 2){
+    const half = Math.ceil(heaviest.rangs.length / 2);
+    const split = [];
+    for(const b of blocks){
+      if(b === heaviest){
+        split.push({pid:b.pid, rangs:b.rangs.slice(0, half)});
+        split.push({pid:b.pid, rangs:b.rangs.slice(half)});
+      } else split.push(b);
+    }
+    variants.push(split);
+  }
+
+  let best = rangs, bestScore = Math.abs(cogOf(rangs) - targetX);
+  for(const v of variants){
+    for(const order of permutations(v)){
+      const flat = order.flatMap(b => b.rangs);
+      const score = Math.abs(cogOf(flat) - targetX);
+      if(score < bestScore - 0.5){ best = flat; bestScore = score; }
+    }
+  }
+  return best;
+}
+
+function compute(){
+  const c = getCont();
+  const o = state.opt;
+  const payload = o.payload || c.payload;
+  const usableL = Math.max(0, c.len - o.clearL);
+
+  const entries = [];
+  const blocked = [];
+
+  for(const line of state.lines){
+    const p = getProd(line.productId);
+    if(!p) continue;
+    const fit = fitProduct(p, c, o);
+    if(!fit){ blocked.push(p); continue; }
+    entries.push({line, p, fit, parts:[], placed:0,
+                  want: line.max ? Infinity : Math.max(0, line.qty | 0)});
+  }
+
+  /* 5.a — répartition de la longueur disponible */
+  let used = 0;
+  const room = () => usableL - used;
+  function addSection(e, fit){
+    const last = e.parts[e.parts.length - 1];
+    if(last && last.fit === fit) last.sections++;
+    else e.parts.push({fit, sections:1});
+    used += fit.depth;
+    e.placed += fit.perSection;
+  }
+
+  for(const e of entries){                       // quantités fermes d'abord
+    if(e.want === Infinity) continue;
+    while(e.placed < e.want && room() >= e.fit.depth) addSection(e, e.fit);
+  }
+  const elastic = entries.filter(e => e.want === Infinity);
+  let addedOne = true;
+  while(elastic.length && addedOne){              // « remplir au maximum », en alternance
+    addedOne = false;
+    for(const e of elastic) if(room() >= e.fit.depth){ addSection(e, e.fit); addedOne = true; }
+  }
+  addedOne = true;
+  while(addedOne){                                // dernier rang tourné : on récupère le résidu
+    addedOne = false;
+    for(const e of entries){
+      const alt = e.fit.alt;
+      if(!alt || alt.depth >= e.fit.depth) continue;
+      if(e.want !== Infinity && e.placed >= e.want) continue;
+      if(room() < alt.depth) continue;
+      addSection(e, alt); addedOne = true;
+    }
+  }
+
+  /* 5.b — mise à plat en rangs, dernier rang éventuellement incomplet */
+  let rangs = [];
+  for(const e of entries){
+    let left = e.want === Infinity ? Infinity : e.want;
+    let loaded = 0;
+    for(const part of e.parts){
+      for(let s = 0; s < part.sections && left > 0; s++){
+        const units = Math.min(part.fit.perSection, left);
+        left -= units; loaded += units;
+        rangs.push({p:e.p, fit:part.fit, units, depth:part.fit.depth,
+                    weight: units * e.p.weight, elastic: e.want === Infinity});
+      }
+    }
+    e.loaded = loaded;
+  }
+
+  /* 5.c — plafond de charge utile : on dégarnit en partant des portes */
+  const dropped = new Map();
+  const weightOf = () => rangs.reduce((s, r) => s + r.weight, 0);
+  let limitedByWeight = false;
+  while(rangs.length && weightOf() > payload){
+    limitedByWeight = true;
+    let idx = -1;
+    for(let i = rangs.length - 1; i >= 0; i--) if(rangs[i].elastic){ idx = i; break; }
+    if(idx === -1) idx = rangs.length - 1;
+    const r = rangs[idx];
+    const cut = Math.min(r.units, Math.ceil((weightOf() - payload) / Math.max(1, r.p.weight)));
+    r.units -= cut;
+    r.weight = r.units * r.p.weight;
+    dropped.set(r.p.id, (dropped.get(r.p.id) || 0) + cut);
+    if(r.units <= 0) rangs.splice(idx, 1);
+  }
+
+  /* 5.c bis — charge lourde et conteneur long : on étale au lieu d'empiler au fond.
+     On échange de la hauteur contre de la longueur, les rangs les plus hauts au centre. */
+  let spread = false;
+  if(o.balance && entries.length === 1 && rangs.length){
+    const e = entries[0];
+    const fit = (e.parts[0] || {}).fit;
+    const W0 = rangs.reduce((s2, r) => s2 + r.weight, 0);
+    const heavy = limitedByWeight || W0 > payload * 0.5;
+    const usedLen = rangs.reduce((s2, r) => s2 + r.depth, 0);
+    if(fit && heavy && fit.layers >= 2 && usableL - usedLen >= fit.depth){
+      const U = rangs.reduce((s2, r) => s2 + r.units, 0);
+      const N = Math.min(Math.floor(usableL / fit.depth), Math.ceil(U / fit.across));
+      const totalLayers = Math.ceil(U / fit.across);
+      const base = Math.floor(totalLayers / N), extra = totalLayers % N;
+      if(N > rangs.length && base >= 1 && base + (extra ? 1 : 0) <= fit.layers){
+        const counts = [];
+        for(let i = 0; i < N; i++) counts.push(base + (i < extra ? 1 : 0));
+        counts.sort((a, b) => b - a);
+        const slots = [];
+        let lo = Math.floor((N - 1) / 2), hi = lo + 1;
+        while(slots.length < N){
+          if(lo >= 0) slots.push(lo--);
+          if(slots.length < N && hi < N) slots.push(hi++);
+        }
+        const centred = new Array(N);
+        counts.forEach((v, i) => { centred[slots[i]] = v; });
+        const out = [];
+        let left = U;
+        for(let i = 0; i < N && left > 0; i++){
+          const units = Math.min(left, centred[i] * fit.across);
+          left -= units;
+          out.push({p:e.p, fit, units, depth:fit.depth, weight: units * e.p.weight, elastic:true});
+        }
+        if(left === 0){ rangs = out; spread = true; }
+      }
+    }
+  }
+
+  /* 5.d — reliquat non chargé, par produit */
+  const leftovers = [];
+  for(const e of entries){
+    if(e.want === Infinity) continue;
+    const notLoaded = e.want - (e.loaded || 0) + (dropped.get(e.p.id) || 0);
+    if(notLoaded > 0) leftovers.push({p:e.p, qty:notLoaded});
+  }
+
+  /* 5.e — équilibrage longitudinal */
+  if(o.balance && rangs.length) rangs = balanceBlocks(rangs, c.len / 2);
+
+  /* 5.f — indicateurs */
+  const totalUnits  = rangs.reduce((s, r) => s + r.units, 0);
+  const totalWeight = rangs.reduce((s, r) => s + r.weight, 0);
+  const loadedLen   = rangs.reduce((s, r) => s + r.depth, 0);
+  const gap         = c.len - loadedLen;
+  const volume      = rangs.reduce((s, r) => s + r.units * r.p.len * r.p.wid * r.p.hei / 1e9, 0);
+  const contVol     = c.len * c.wid * c.hei / 1e9;
+  const maxHeight   = rangs.reduce((m, r) => Math.max(m, r.fit.layers * r.p.hei), 0);
+  const cog         = cogOf(rangs);
+
+  let front = 0, rear = 0, pos = 0;
+  const mid = c.len / 2;
+  for(const r of rangs){
+    const s = pos, e2 = pos + r.depth;
+    const inFront = Math.max(0, Math.min(e2, mid) - s) / r.depth;
+    front += r.weight * inFront;
+    rear  += r.weight * (1 - inFront);
+    pos = e2;
+  }
+
+  return {cont:c, payload, usableL, rangs, entries, blocked, leftovers, limitedByWeight, spread,
+          totalUnits, totalWeight, loadedLen, gap, volume, contVol, maxHeight, cog,
+          front, rear, families:[...new Set(rangs.map(r => r.p.family))]};
+}
+
+/* ========================= 6. MARCHE À SUIVRE ======================== */
+
+function buildSteps(res){
+  const c = res.cont;
+  const steps = [];
+  const hasDust = res.families.includes("chenevotte");
+  const desiccant = Math.max(4, Math.round(res.contVol / 4));
+  let letter = 0;
+  const L = () => String.fromCharCode(65 + letter++);
+
+  steps.push({kind:"prep", n:L(), title:"Contrôler le conteneur avant d'empoter",
+    detail:"Portes fermées de l'intérieur : aucun point de lumière ne doit apparaître. Plancher sec, propre, sans clou saillant ni trace d'huile, aucune odeur. Le chanvre reprend l'humidité et les odeurs.",
+    meta:`Relever le n° de conteneur, le type et la tare (${nf.format(c.tare)} kg annoncés) sur la plaque CSC.`});
+
+  steps.push({kind:"prep", n:L(), title:"Protéger la marchandise",
+    detail:"Papier kraft ou film au sol si le plancher est douteux, protection des parois latérales au contact direct. Poser les sachets déshydratants en partie haute au fur et à mesure du chargement.",
+    meta:`Ordre de grandeur : ${desiccant} unités de 1 kg pour ce volume — à ajuster selon la destination et la saison.`});
+
+  steps.push({kind:"prep", n:L(), title:"Sécuriser le poste",
+    detail:`Caler le châssis ou verrouiller le niveleur de quai, vérifier l'éclairage du fond. EPI : gants, chaussures de sécurité${hasDust ? ", lunettes et masque anti-poussière (la chènevotte poussière beaucoup en conteneur fermé)" : ""}.`,
+    meta:"Préparer dès maintenant le matériel de calage : barre de calage ou coussin gonflable, sangles, filet de porte."});
+
+  steps.push({kind:"prep", n:L(), title:"Photographier le conteneur vide",
+    detail:"Portes ouvertes, plancher visible, numéro de conteneur lisible. C'est la photo qui vous protège en cas de litige sur l'état du matériel.",
+    meta:""});
+
+  /* --- rangs de chargement, du fond vers les portes --- */
+  const groups = [];
+  res.rangs.forEach((r, i) => {
+    const last = groups[groups.length - 1];
+    const sameAsLast = last && last.p.id === r.p.id && last.units === r.units &&
+                       last.fit.across === r.fit.across && last.fit.layers === r.fit.layers;
+    if(state.opt.compact && sameAsLast){ last.to = i; last.count++; }
+    else groups.push({p:r.p, fit:r.fit, units:r.units, from:i, to:i, count:1});
+  });
+
+  let cumUnits = 0, cumWeight = 0;
+  const total = res.rangs.length;
+  for(const g of groups){
+    const u = g.units * g.count;
+    cumUnits  += u;
+    cumWeight += u * g.p.weight;
+    const pct = res.payload ? Math.round(cumWeight / res.payload * 100) : 0;
+    const label = g.count > 1 ? `Rangs ${g.from + 1} à ${g.to + 1}` : `Rang ${g.from + 1}`;
+    const unitWord = plural(g.units, g.p.unit);
+    const across = g.fit.across;
+    const full = Math.floor(g.units / across);
+    const rest = g.units - full * across;
+    const stackTxt =
+      full === 0              ? `${g.units} ${plural(g.units, g.p.unit)} côte à côte, au sol`
+    : full === 1 && rest === 0 ? `${across} de front, posées au sol, sans empilage`
+    : rest === 0              ? `${across} de front sur ${full} niveaux`
+                              : `${across} de front sur ${full} niveaux, plus ${rest} ${plural(rest, g.p.unit)} au-dessus`;
+    const notes = [];
+    if(g.from === 0) notes.push("serrer contre la paroi du fond");
+    if(g.to === total - 1 && res.gap > 150) notes.push(`laisser ${nf.format(Math.round(res.gap / 10))} cm libres devant les portes`);
+    if(g.p.handling === "chariot") notes.push("entrée au chariot, fourches à fond sous la palette");
+    else notes.push("reprise à la pince ou à deux opérateurs");
+
+    steps.push({kind:"load", n:String(g.from + 1), from:g.from, to:g.to,
+      title:`${label} · ${nf.format(u)} ${unitWord} — ${g.p.short}`,
+      detail:`${stackTxt}, ${g.fit.sens}${g.count > 1 ? `, à l'identique sur ${g.count} rangs` : ""}. Chaque rang mesure ${nf2.format(g.fit.depth / 1000)} m de profondeur.`,
+      meta: notes.join(" · ").replace(/^./, m => m.toUpperCase()) + ".",
+      badge:{units:cumUnits, weight:cumWeight, pct}});
+  }
+
+  /* --- fermeture --- */
+  letter = 0;
+  const C = () => "Z" + String.fromCharCode(65 + letter++);
+
+  steps.push({kind:"close", n:C(), title:"Caler la dernière rangée",
+    detail: res.gap > 150
+      ? `Il reste ${nf.format(Math.round(res.gap / 10))} cm entre la dernière rangée et les portes : barre de calage ou coussin gonflable obligatoire, sinon la charge se déplace en mer.`
+      : "L'espace résiduel est faible : bloquer malgré tout par sangles ou intercalaires pour absorber les vibrations.",
+    meta:"Vérifier qu'aucune unité ne s'appuie sur les vantaux."});
+
+  steps.push({kind:"close", n:C(), title:"Poser le filet ou les sangles de porte",
+    detail:"Rien ne doit pouvoir tomber à l'ouverture chez le client. Sangles ancrées dans les rails latéraux.",
+    meta:""});
+
+  steps.push({kind:"close", n:C(), title:"Photographier le chargement terminé",
+    detail:"Une photo de la dernière rangée avant fermeture, une des portes fermées, une du plomb posé avec son numéro lisible.",
+    meta:""});
+
+  steps.push({kind:"close", n:C(), title:"Fermer, plomber, déclarer",
+    detail:`Poser le plomb et noter son numéro sur le dossier. Masse brute vérifiée (VGM) à déclarer : tare ${nf.format(c.tare)} kg + marchandise ${nf.format(Math.round(res.totalWeight))} kg = ${nf.format(Math.round(c.tare + res.totalWeight))} kg.`,
+    meta:`Liste de colisage : ${nf.format(res.totalUnits)} unités, ${nf.format(Math.round(res.totalWeight))} kg net.`});
+
+  return steps;
+}
+
+/* ========================= 7. SCHÉMAS ================================ */
+
+const HATCH = `<pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <rect width="7" height="7" fill="none"></rect>
+  <line x1="0" y1="0" x2="0" y2="7" stroke="var(--line-strong)" stroke-width="1.6"></line>
+</pattern>`;
+
+function rangIsDone(i, steps){
+  const s = steps.find(st => st.kind === "load" && i >= st.from && i <= st.to);
+  return s ? state.done.has(stepKey(s)) : false;
+}
+const stepKey = s => s.kind + ":" + s.n;
+
+function svgTop(res, steps){
+  const c = res.cont;
+  const W = 1000, scale = W / c.len;
+  const H = c.wid * scale;
+  const padL = 46, padR = 54, padT = 22, padB = 40;
+  const vw = W + padL + padR, vh = H + padT + padB;
+  let s = `<svg viewBox="0 0 ${vw} ${vh}" role="img" aria-label="Vue de dessus du conteneur chargé"><defs>${HATCH}</defs>`;
+
+  s += `<rect x="${padL}" y="${padT}" width="${W}" height="${H}" fill="var(--surface-2)" stroke="var(--ink)" stroke-width="2"></rect>`;
+  s += `<text x="${padL - 10}" y="${padT + H / 2}" transform="rotate(-90 ${padL - 10} ${padT + H / 2})" text-anchor="middle" font-family="var(--font-mono)" font-size="11" letter-spacing="1.4" fill="var(--ink-3)">FOND</text>`;
+  s += `<text x="${padL + W + 14}" y="${padT + H / 2}" transform="rotate(90 ${padL + W + 14} ${padT + H / 2})" text-anchor="middle" font-family="var(--font-mono)" font-size="11" letter-spacing="1.4" fill="var(--ink-3)">PORTES</text>`;
+  s += `<line x1="${padL + W}" y1="${padT - 6}" x2="${padL + W}" y2="${padT + H + 6}" stroke="var(--ink)" stroke-width="4"></line>`;
+
+  const maxLevels = res.rangs.reduce((m, r) => Math.max(m, Math.ceil(r.units / r.fit.across)), 0);
+  let pos = 0;
+  res.rangs.forEach((r, i) => {
+    const x = padL + pos * scale, w = r.depth * scale;
+    const done = rangIsDone(i, steps);
+    const active = state.active && i >= state.active.from && i <= state.active.to;
+    const bw = (r.fit.depth === r.p.len ? r.p.wid : r.p.len) * scale;
+    const floorUnits = Math.min(r.units, r.fit.across);
+    for(let k = 0; k < r.fit.across; k++){
+      const y = padT + k * bw + 1;
+      const filled = k < floorUnits;
+      s += `<rect x="${x + 1.5}" y="${y}" width="${Math.max(1, w - 3)}" height="${Math.max(1, bw - 2)}" rx="2"
+        fill="${filled ? (done ? "var(--surface-2)" : famSoft(r.p.family)) : "url(#hatch)"}"
+        stroke="${active ? "var(--accent)" : famColor(r.p.family)}" stroke-width="${active ? 2.5 : 1.2}"
+        opacity="${filled ? 1 : .45}"></rect>`;
+    }
+    if(done) s += `<text x="${x + w / 2}" y="${padT + H / 2 + 5}" text-anchor="middle" font-size="15" fill="var(--ok)">&#10003;</text>`;
+    const showN = w > 20 && (w > 30 || i % 2 === 0);
+    if(showN){
+      const col = active ? "var(--accent)" : "var(--ink-3)";
+      s += `<text x="${x + w / 2}" y="${padT + H + 15}" text-anchor="middle" font-family="var(--font-mono)" font-size="10.5" fill="${col}" font-weight="${active ? 700 : 400}">${i + 1}</text>`;
+      const lv = Math.ceil(r.units / r.fit.across);
+      if(maxLevels > 1) s += `<text x="${x + w / 2}" y="${padT + H + 27}" text-anchor="middle" font-family="var(--font-mono)" font-size="9.5" fill="${col}">&times;${lv}</text>`;
+    }
+    pos += r.depth;
+  });
+
+  if(res.gap > 40){
+    const x = padL + pos * scale, w = res.gap * scale;
+    s += `<rect x="${x}" y="${padT}" width="${w}" height="${H}" fill="url(#hatch)" opacity=".5"></rect>`;
+    if(w > 54) s += `<text x="${x + w / 2}" y="${padT + H / 2 + 4}" text-anchor="middle" font-family="var(--font-mono)" font-size="10.5" fill="var(--ink-2)">${nf.format(Math.round(res.gap / 10))} cm</text>`;
+  }
+
+  s += `<text x="${padL}" y="${vh - 8}" font-family="var(--font-mono)" font-size="10.5" fill="var(--ink-3)">Longueur chargée ${nf2.format(res.loadedLen / 1000)} m sur ${nf2.format(c.len / 1000)} m &middot; largeur intérieure ${nf2.format(c.wid / 1000)} m</text>`;
+  s += `</svg>`;
+  return s;
+}
+
+function svgSide(res, steps){
+  const c = res.cont;
+  const W = 1000, scale = W / c.len;
+  const H = c.hei * scale;
+  const padL = 46, padR = 54, padT = 22, padB = 52;
+  const vw = W + padL + padR, vh = H + padT + padB;
+  let s = `<svg viewBox="0 0 ${vw} ${vh}" role="img" aria-label="Vue de côté du conteneur chargé"><defs>${HATCH}</defs>`;
+
+  const base = padT + H;
+  s += `<rect x="${padL}" y="${padT}" width="${W}" height="${H}" fill="var(--surface-2)" stroke="var(--ink)" stroke-width="2"></rect>`;
+  s += `<text x="${padL - 10}" y="${padT + H / 2}" transform="rotate(-90 ${padL - 10} ${padT + H / 2})" text-anchor="middle" font-family="var(--font-mono)" font-size="11" letter-spacing="1.4" fill="var(--ink-3)">FOND</text>`;
+  s += `<text x="${padL + W + 14}" y="${padT + H / 2}" transform="rotate(90 ${padL + W + 14} ${padT + H / 2})" text-anchor="middle" font-family="var(--font-mono)" font-size="11" letter-spacing="1.4" fill="var(--ink-3)">PORTES</text>`;
+
+  let pos = 0;
+  res.rangs.forEach((r, i) => {
+    const x = padL + pos * scale, w = r.depth * scale;
+    const uh = r.p.hei * scale;
+    const done = rangIsDone(i, steps);
+    const active = state.active && i >= state.active.from && i <= state.active.to;
+    const full = Math.floor(r.units / r.fit.across);
+    const rest = r.units - full * r.fit.across;
+    const drawn = Math.min(r.fit.layers, full + (rest > 0 ? 1 : 0));
+    for(let k = 0; k < drawn; k++){
+      const y = base - (k + 1) * uh + 1;
+      s += `<rect x="${x + 1.5}" y="${y}" width="${Math.max(1, w - 3)}" height="${Math.max(1, uh - 2)}" rx="2"
+        fill="${done ? "var(--surface-2)" : famSoft(r.p.family)}"
+        stroke="${active ? "var(--accent)" : famColor(r.p.family)}" stroke-width="${active ? 2.5 : 1.2}"></rect>`;
+    }
+    pos += r.depth;
+  });
+
+  if(res.gap > 40){
+    const x = padL + pos * scale;
+    s += `<rect x="${x}" y="${padT}" width="${res.gap * scale}" height="${H}" fill="url(#hatch)" opacity=".5"></rect>`;
+  }
+
+  /* zone cible du centre de gravité : moitié centrale de la longueur */
+  const zx = padL + (c.len * 0.4) * scale, zw = (c.len * 0.2) * scale;
+  s += `<rect x="${zx}" y="${base + 6}" width="${zw}" height="12" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1" stroke-dasharray="3 3"></rect>`;
+  s += `<line x1="${padL + W / 2}" y1="${padT}" x2="${padL + W / 2}" y2="${base + 18}" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="4 4"></line>`;
+
+  if(res.totalWeight > 0){
+    const gx = padL + res.cog * scale;
+    s += `<polygon points="${gx},${base + 4} ${gx - 7},${base + 20} ${gx + 7},${base + 20}" fill="var(--accent)"></polygon>`;
+    s += `<text x="${gx}" y="${base + 34}" text-anchor="middle" font-family="var(--font-mono)" font-size="10.5" fill="var(--accent)" font-weight="600">CdG ${nf2.format(res.cog / 1000)} m</text>`;
+  }
+  s += `<text x="${padL}" y="${vh - 6}" font-family="var(--font-mono)" font-size="10.5" fill="var(--ink-3)">Hauteur intérieure ${nf2.format(c.hei / 1000)} m &middot; hauteur chargée ${nf2.format(res.maxHeight / 1000)} m &middot; zone verte = centre de gravité recherché</text>`;
+  s += `</svg>`;
+  return s;
+}
+
+/* ========================= 8. CONTRÔLES DU PLAN ====================== */
+
+function buildAlerts(res){
+  const a = [];
+  const c = res.cont;
+
+  for(const p of res.blocked){
+    a.push({lvl:"crit", tag:"Bloquant", t:`${p.short} ne rentre pas`,
+      d:`Aucune orientation ne passe : ${nf.format(p.len)} × ${nf.format(p.wid)} × ${nf.format(p.hei)} mm contre ${nf.format(c.wid - state.opt.clearW)} mm de largeur utile et ${nf.format(c.hei - state.opt.clearH)} mm sous plafond. Vérifiez les cotes dans le Catalogue ou changez de conteneur.`});
+  }
+  for(const r of new Map(res.rangs.map(r => [r.p.id, r])).values()){
+    if(r.p.hei > c.doorH){
+      a.push({lvl:"crit", tag:"Bloquant", t:`${r.p.short} ne passe pas les portes`,
+        d:`Hauteur de l'unité ${nf.format(r.p.hei)} mm pour une ouverture de porte de ${nf.format(c.doorH)} mm.`});
+    }
+  }
+  for(const l of res.leftovers){
+    a.push({lvl:"crit", tag:"Reliquat", t:`${nf.format(l.qty)} ${plural(l.qty, l.p.unit)} de ${l.p.short} ne sont pas chargées`,
+      d:"La quantité demandée dépasse ce que ce conteneur accepte. Prévoyez un second conteneur ou réduisez la commande."});
+  }
+  if(res.limitedByWeight){
+    a.push({lvl:"warn", tag:"Poids", t:"Chargement arrêté par la charge utile, pas par le volume",
+      d:`La limite de ${nf.format(res.payload)} kg est atteinte avant que le conteneur soit plein. C'est normal sur la fibre dense ; sur la chènevotte, vérifiez le poids unitaire saisi.`});
+  }
+  const pct = res.payload ? res.totalWeight / res.payload : 0;
+  if(pct >= 0.95){
+    a.push({lvl:"warn", tag:"VGM", t:"Charge utile quasiment atteinte",
+      d:`${Math.round(pct * 100)} % de la limite retenue. Contrôlez la masse brute vérifiée (${nf.format(Math.round(c.tare + res.totalWeight))} kg) et la réglementation routière avant l'enlèvement.`});
+  }
+  const gross = c.tare + res.totalWeight;
+  if(gross > 30480){
+    a.push({lvl:"crit", tag:"Masse brute", t:`Masse brute de ${nf.format(Math.round(gross))} kg, au-dessus du maximum du conteneur`,
+      d:"La masse brute maximale d'un conteneur ISO est de 30 480 kg. Réduisez la charge utile retenue dans les réglages."});
+  }
+  if(res.gap > 200 && res.rangs.length){
+    a.push({lvl:"warn", tag:"Calage", t:`${nf.format(Math.round(res.gap / 10))} cm de vide devant les portes`,
+      d:"Au-delà de 20 cm, la charge se déplace en navigation. Barre de calage, coussin gonflable ou intercalaires bois obligatoires."});
+  }
+  if(res.totalWeight > 0){
+    const heavy = Math.max(res.front, res.rear) / res.totalWeight;
+    if(heavy > 0.6){
+      a.push({lvl:"warn", tag:"Répartition", t:`${Math.round(heavy * 100)} % du poids sur une seule moitié`,
+        d:"La règle usuelle est 60 % maximum par demi-longueur. Activez l'équilibrage automatique ou inversez l'ordre des produits."});
+    }
+    const off = Math.abs(res.cog - c.len / 2);
+    if(off > c.len * 0.1){
+      a.push({lvl:"warn", tag:"Centre de gravité", t:`Centre de gravité décalé de ${nf.format(Math.round(off / 10))} cm`,
+        d:`Il se situe à ${nf2.format(res.cog / 1000)} m du fond pour un milieu à ${nf2.format(c.len / 2000)} m. Répartissez ou calez au centre.`});
+    }
+  }
+  if(res.spread && res.rangs.length){
+    a.push({lvl:"ok", tag:"Répartition", t:"Charge étalée sur toute la longueur",
+      d:"Plutôt que d'empiler au maximum près du fond, le plan répartit la marchandise sur l'ensemble du plancher et place les rangs les plus hauts au centre. Les hauteurs d'empilage varient donc d'un rang à l'autre : suivez le nombre de niveaux indiqué à chaque étape."});
+  }
+  if(!a.filter(x => x.lvl !== "ok").length && res.rangs.length){
+    a.push({lvl:"ok", tag:"Contrôlé", t:"Plan cohérent",
+      d:`Charge utile, répartition, hauteur et passage de porte vérifiés. Centre de gravité à ${nf2.format(res.cog / 1000)} m du fond.`});
+  }
+  return a;
+}
+
+/* ========================= 9. RENDU DU PLAN ========================== */
+
+let LAST = null;
+
+function renderPlan(){
+  const res = compute();
+  const steps = buildSteps(res);
+  LAST = {res, steps};
+  const c = res.cont;
+
+  /* --- synthèse --- */
+  const pctW = res.payload ? Math.min(100, res.totalWeight / res.payload * 100) : 0;
+  const pctL = Math.min(100, res.loadedLen / c.len * 100);
+  const cls = v => v >= 95 ? " is-crit" : v >= 85 ? " is-warn" : "";
+  const loadedProducts = [...new Map(res.rangs.map(r => [r.p.id, r.p])).values()];
+  const countOf = p => res.rangs.filter(r => r.p.id === p.id).reduce((s, r) => s + r.units, 0);
+  const perProduct = loadedProducts.map(p => `${nf.format(countOf(p))} ${p.short.toLowerCase()}`).join(" · ")
+    || "aucun produit sélectionné";
+  const tileLabel = loadedProducts.length === 1
+    ? `${plural(2, loadedProducts[0].unit)} de ${loadedProducts[0].short.toLowerCase()}`
+    : perProduct;
+
+  $("#summary").innerHTML = `
+    <div class="stat">
+      <div class="stat-v">${nf.format(res.totalUnits)}</div>
+      <div class="stat-l">${esc(tileLabel)}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-v">${nf.format(Math.round(res.totalWeight))}<span class="stat-u">kg</span></div>
+      <div class="stat-l">${Math.round(pctW)} % de ${nf.format(res.payload)} kg de charge utile</div>
+      <span class="meter${cls(pctW)}"><i style="width:${pctW}%"></i></span>
+    </div>
+    <div class="stat">
+      <div class="stat-v">${nf2.format(res.loadedLen / 1000)}<span class="stat-u">m</span></div>
+      <div class="stat-l">chargés sur ${nf2.format(c.len / 1000)} m &middot; ${nf.format(res.rangs.length)} ${plural(res.rangs.length, "rang")}</div>
+      <span class="meter${cls(pctL)}"><i style="width:${pctL}%"></i></span>
+    </div>
+    <div class="stat">
+      <div class="stat-v">${nf.format(Math.round(c.tare + res.totalWeight))}<span class="stat-u">kg</span></div>
+      <div class="stat-l">masse brute VGM à déclarer</div>
+    </div>`;
+
+  /* --- alertes --- */
+  $("#alerts").innerHTML = buildAlerts(res).map(x =>
+    `<div class="alert ${x.lvl}"><span class="tag">${esc(x.tag)}</span><span><b>${esc(x.t)}</b>${esc(x.d)}</span></div>`).join("");
+
+  /* --- schémas --- */
+  if(res.rangs.length){
+    $("#svg-top").innerHTML  = svgTop(res, steps);
+    $("#svg-side").innerHTML = svgSide(res, steps);
+    $("#top-note").textContent = `${nf1.format(res.volume)} m³ de marchandise sur ${nf1.format(res.contVol)} m³ disponibles.`;
+  }else{
+    $("#svg-top").innerHTML = `<p class="empty">Choisissez un produit et une quantité pour générer le plan.</p>`;
+    $("#svg-side").innerHTML = "";
+    $("#top-note").textContent = "";
+  }
+  $("#legend").innerHTML = [...new Map(res.rangs.map(r => [r.p.id, r.p])).values()].map(p =>
+    `<span><i style="background:${famSoft(p.family)};border-color:${famColor(p.family)}"></i>${esc(p.short)} — ${nf.format(p.weight)} kg/${esc(p.unit)}</span>`).join("")
+    + (res.gap > 40 ? `<span><i style="background:repeating-linear-gradient(45deg,var(--line-strong) 0 2px,transparent 2px 5px)"></i>Espace à caler</span>` : "");
+
+  /* --- étapes --- */
+  $("#steps").innerHTML = steps.map(s => {
+    const key = stepKey(s);
+    const done = state.done.has(key);
+    const active = s.kind === "load" && state.active && s.from === state.active.from;
+    return `<div class="step ${s.kind === "load" ? "is-load" : ""} ${done ? "is-done" : ""} ${active ? "is-active" : ""}" data-key="${esc(key)}" ${s.kind === "load" ? `data-from="${s.from}" data-to="${s.to}"` : ""}>
+      <input class="step-chk" type="checkbox" id="chk-${esc(key)}" ${done ? "checked" : ""} aria-label="Étape faite">
+      <span class="step-n">${esc(s.n)}</span>
+      <span>
+        <span class="step-title">${esc(s.title)}</span>
+        <span class="step-detail">${esc(s.detail)}</span>
+        ${s.meta ? `<span class="step-meta">${esc(s.meta)}</span>` : ""}
+      </span>
+      ${s.badge ? `<span class="step-badge"><b>${nf.format(s.badge.units)}</b>${nf.format(Math.round(s.badge.weight))} kg<br>${s.badge.pct} %</span>` : `<span class="step-badge"></span>`}
+    </div>`;
+  }).join("");
+
+  const doneCount = steps.filter(s => state.done.has(stepKey(s))).length;
+  $("#progress-label").textContent = `${doneCount} / ${steps.length} étapes`;
+  $("#progress-bar").style.width = steps.length ? (doneCount / steps.length * 100) + "%" : "0%";
+
+  /* --- entête d'impression --- */
+  $("#print-title").textContent = `${c.name} — ${perProduct}`;
+  $("#print-sub").textContent = `${nf.format(res.totalUnits)} unités · ${nf.format(Math.round(res.totalWeight))} kg net · masse brute ${nf.format(Math.round(c.tare + res.totalWeight))} kg · édité le ${new Date().toLocaleDateString("fr-FR")}`;
+}
+
+/* ========================= 10. PANNEAU DE RÉGLAGE ==================== */
+
+function productOptions(selected){
+  const fams = [["fibre", "Fibre"], ["chenevotte", "Chènevotte et dérivés"]];
+  return fams.map(([f, label]) => {
+    const items = PRODUCTS.filter(p => p.family === f);
+    if(!items.length) return "";
+    return `<optgroup label="${esc(label)}">` + items.map(p =>
+      `<option value="${esc(p.id)}" ${p.id === selected ? "selected" : ""}>${esc(p.name)}</option>`).join("") + `</optgroup>`;
+  }).join("");
+}
+
+function renderSetup(){
+  const c = getCont();
+
+  $("#cont-list").innerHTML = CONTAINERS.map(x => `
+    <label class="cont ${x.id === state.containerId ? "is-sel" : ""}">
+      <input type="radio" name="cont" value="${esc(x.id)}" ${x.id === state.containerId ? "checked" : ""}>
+      <span>
+        <span class="cont-name">${esc(x.name)}</span>
+        <span class="cont-specs">${nf2.format(x.len / 1000)} × ${nf2.format(x.wid / 1000)} × ${nf2.format(x.hei / 1000)} m · CU ${nf.format(x.payload)} kg</span>
+      </span>
+    </label>`).join("");
+
+  $("#lines").innerHTML = state.lines.map((l, i) => {
+    const p = getProd(l.productId) || PRODUCTS[0];
+    return `<div class="line" data-i="${i}">
+      <div class="line-top">
+        <span class="swatch" style="background:${famColor(p.family)}"></span>
+        <select class="line-prod" aria-label="Produit">${productOptions(l.productId)}</select>
+        ${state.lines.length > 1 ? `<button class="line-del" type="button" aria-label="Retirer">Retirer</button>` : ""}
+      </div>
+      <div class="line-qty">
+        <input class="qty" type="number" min="0" step="1" placeholder="qté"
+               value="${l.max ? "" : (l.qty ?? "")}" ${l.max ? "disabled" : ""} aria-label="Quantité">
+        <span class="hint">${esc(plural(2, p.unit))}</span>
+        <label class="chk"><input type="checkbox" class="line-max" ${l.max ? "checked" : ""}> Remplir au maximum</label>
+      </div>
+    </div>`;
+  }).join("");
+
+  $("#opt-payload").value = state.opt.payload ?? c.payload;
+  $("#opt-clearw").value  = state.opt.clearW;
+  $("#opt-clearh").value  = state.opt.clearH;
+  $("#opt-clearl").value  = state.opt.clearL;
+  $("#opt-balance").checked = state.opt.balance;
+  $("#opt-compact").checked = state.opt.compact;
+}
+
+/* ========================= 11. CATALOGUE ============================= */
+
+const NUM_FIELDS = ["len", "wid", "hei", "weight", "stack"];
+
+function renderCatalogue(){
+  $("#tbl-prod tbody").innerHTML = PRODUCTS.map(p => `
+    <tr data-id="${esc(p.id)}">
+      <td><input type="text" data-f="name" value="${esc(p.name)}"></td>
+      <td><select data-f="family" aria-label="Famille"><option value="fibre" ${p.family === "fibre" ? "selected" : ""}>fibre</option><option value="chenevotte" ${p.family === "chenevotte" ? "selected" : ""}>chènevotte</option></select></td>
+      <td><input type="text" data-f="unit" value="${esc(p.unit)}" style="min-width:90px"></td>
+      ${NUM_FIELDS.map(f => `<td><input type="number" data-f="${f}" value="${p[f]}" min="0" step="${f === "stack" ? 1 : 10}"></td>`).join("")}
+      <td><select data-f="handling" aria-label="Manutention"><option value="chariot" ${p.handling === "chariot" ? "selected" : ""}>chariot</option><option value="pince" ${p.handling === "pince" ? "selected" : ""}>pince / manuel</option></select></td>
+      <td><button class="btn btn-sm prod-del" type="button">Supprimer</button></td>
+    </tr>`).join("");
+
+  $("#tbl-cont tbody").innerHTML = CONTAINERS.map(c => `
+    <tr data-id="${esc(c.id)}">
+      <td><b>${esc(c.name)}</b></td>
+      ${["len", "wid", "hei", "doorW", "doorH", "tare", "payload"].map(f =>
+        `<td><input type="number" data-f="${f}" value="${c[f]}" min="0" step="10"></td>`).join("")}
+    </tr>`).join("");
+}
+
+/* ========================= 12. ÉVÉNEMENTS ============================ */
+
+function refresh(){ persist(); renderPlan(); }
+
+$("#cont-list").addEventListener("change", e => {
+  if(!e.target.matches("input[name=cont]")) return;
+  state.containerId = e.target.value;
+  state.opt.payload = null;
+  state.active = null;
+  renderSetup(); refresh();
+});
+
+$("#lines").addEventListener("change", e => {
+  const row = e.target.closest(".line"); if(!row) return;
+  const i = +row.dataset.i, line = state.lines[i]; if(!line) return;
+  if(e.target.matches(".line-prod")){ line.productId = e.target.value; renderSetup(); refresh(); return; }
+  if(e.target.matches(".line-max")){
+    line.max = e.target.checked;
+    if(line.max) line.qty = null; else if(!line.qty) line.qty = 0;
+    renderSetup(); refresh(); return;
+  }
+});
+$("#lines").addEventListener("input", e => {
+  const row = e.target.closest(".line"); if(!row) return;
+  const line = state.lines[+row.dataset.i]; if(!line) return;
+  if(e.target.matches(".qty")){ line.qty = Math.max(0, e.target.value | 0); line.max = false; refresh(); }
+});
+$("#lines").addEventListener("click", e => {
+  if(!e.target.matches(".line-del")) return;
+  const row = e.target.closest(".line");
+  state.lines.splice(+row.dataset.i, 1);
+  state.active = null;
+  renderSetup(); refresh();
+});
+
+$("#btn-add-line").addEventListener("click", () => {
+  const used = new Set(state.lines.map(l => l.productId));
+  const next = PRODUCTS.find(p => !used.has(p.id)) || PRODUCTS[0];
+  state.lines.push({productId: next.id, qty:0, max:false});
+  renderSetup(); refresh();
+});
+
+for(const [sel, key, min, max] of [["#opt-payload","payload",500,40000],["#opt-clearw","clearW",0,400],
+                                   ["#opt-clearh","clearH",0,400],["#opt-clearl","clearL",0,900]]){
+  $(sel).addEventListener("input", e => {
+    const v = Number(e.target.value);
+    if(!Number.isFinite(v) || v < min || v > max) return;
+    state.opt[key] = v; refresh();
+  });
+}
+$("#opt-balance").addEventListener("change", e => { state.opt.balance = e.target.checked; refresh(); });
+$("#opt-compact").addEventListener("change", e => { state.opt.compact = e.target.checked; state.active = null; refresh(); });
+
+$("#steps").addEventListener("click", e => {
+  const row = e.target.closest(".step"); if(!row) return;
+  if(e.target.matches(".step-chk")){
+    const key = row.dataset.key;
+    if(e.target.checked) state.done.add(key); else state.done.delete(key);
+    renderPlan(); return;
+  }
+  if(row.dataset.from !== undefined){
+    const from = +row.dataset.from, to = +row.dataset.to;
+    state.active = (state.active && state.active.from === from) ? null : {from, to};
+    renderPlan();
+  }
+});
+$("#btn-reset-steps").addEventListener("click", () => { state.done.clear(); state.active = null; renderPlan(); });
+$("#btn-print").addEventListener("click", () => window.print());
+
+/* Onglets */
+for(const [tab, view] of [["#tab-plan", "#view-plan"], ["#tab-cat", "#view-cat"]]){
+  $(tab).addEventListener("click", () => {
+    const isPlan = tab === "#tab-plan";
+    $("#tab-plan").setAttribute("aria-selected", String(isPlan));
+    $("#tab-cat").setAttribute("aria-selected", String(!isPlan));
+    $(view).hidden = false;
+    $(isPlan ? "#view-cat" : "#view-plan").hidden = true;
+    if(isPlan){ renderSetup(); renderPlan(); } else renderCatalogue();
+  });
+}
+
+/* Catalogue : produits */
+$("#tbl-prod").addEventListener("change", onProdEdit);
+$("#tbl-prod").addEventListener("input", onProdEdit);
+function onProdEdit(e){
+  const tr = e.target.closest("tr"); const f = e.target.dataset.f;
+  if(!tr || !f) return;
+  const p = getProd(tr.dataset.id); if(!p) return;
+  p[f] = NUM_FIELDS.includes(f) ? Math.max(f === "stack" ? 1 : 0, Number(e.target.value) || 0) : e.target.value;
+  if(f === "name") p.short = String(e.target.value).slice(0, 40);
+  store("pcc-prod-v1", PRODUCTS);
+  renderSetup(); renderPlan();
+}
+$("#tbl-prod").addEventListener("click", e => {
+  if(!e.target.matches(".prod-del")) return;
+  const id = e.target.closest("tr").dataset.id;
+  if(PRODUCTS.length <= 1) return;
+  PRODUCTS = PRODUCTS.filter(p => p.id !== id);
+  state.lines = state.lines.filter(l => l.productId !== id);
+  if(!state.lines.length) state.lines = [{productId: PRODUCTS[0].id, qty:null, max:true}];
+  store("pcc-prod-v1", PRODUCTS);
+  renderCatalogue(); renderSetup(); refresh();
+});
+$("#btn-add-prod").addEventListener("click", () => {
+  PRODUCTS.push({id:"custom-" + Date.now(), name:"Nouveau produit", short:"Nouveau produit",
+    family:"fibre", unit:"unité", len:1200, wid:800, hei:1000, weight:500, stack:1, handling:"chariot"});
+  store("pcc-prod-v1", PRODUCTS);
+  renderCatalogue(); renderSetup();
+});
+$("#btn-reset-cat").addEventListener("click", () => {
+  PRODUCTS   = clone(PRODUCTS_DEF);
+  CONTAINERS = clone(CONTAINERS_DEF);
+  store("pcc-prod-v1", PRODUCTS); store("pcc-cont-v1", CONTAINERS);
+  state.lines = [{productId:"fibre-std", qty:null, max:true}];
+  renderCatalogue(); renderSetup(); refresh();
+});
+
+/* Catalogue : conteneurs */
+$("#tbl-cont").addEventListener("input", e => {
+  const tr = e.target.closest("tr"); const f = e.target.dataset.f;
+  if(!tr || !f) return;
+  const c = CONTAINERS.find(x => x.id === tr.dataset.id); if(!c) return;
+  c[f] = Math.max(0, Number(e.target.value) || 0);
+  store("pcc-cont-v1", CONTAINERS);
+  renderSetup(); renderPlan();
+});
+
+/* Thème : automatique → clair → sombre */
+const THEMES = ["auto", "light", "dark"];
+let themeIdx = Math.max(0, THEMES.indexOf(store("pcc-theme") || "auto"));
+function applyTheme(){
+  const t = THEMES[themeIdx];
+  if(t === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", t);
+  $("#btn-theme").title = "Thème : " + ({auto:"automatique", light:"clair", dark:"sombre"})[t];
+  store("pcc-theme", t);
+}
+$("#btn-theme").addEventListener("click", () => { themeIdx = (themeIdx + 1) % THEMES.length; applyTheme(); });
+
+/* ========================= 13. DÉMARRAGE ============================= */
+applyTheme();
+renderSetup();
+renderCatalogue();
+renderPlan();
+</script>
+</body>
+</html>
