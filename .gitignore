@@ -38,3 +38,6 @@ tmp/
 # Base de connaissances privée (documents internes Planète Chanvre) : jamais sur GitHub
 knowledge/prive/*
 !knowledge/prive/README.md
+
+# Archives remises à l utilisateur
+livrables/
