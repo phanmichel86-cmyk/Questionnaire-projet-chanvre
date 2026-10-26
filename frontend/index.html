@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Expert construction chanvre</title>
+  <meta name="description" content="Posez vos questions sur la construction et la rénovation en chanvre : béton de chanvre, enduits, isolants, réglementation, mise en œuvre.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="entete">
+    <div class="marque">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="28" height="28"><path fill="currentColor" d="M16 2c1.2 3.6 1.2 7.4 0 11.4C14.8 9.4 14.8 5.6 16 2Zm0 12.6c2.6-3.4 6-5.6 10.2-6.4-1.6 3.9-4.4 6.4-8.6 7.6l-1.6-1.2Zm0 0c-2.6-3.4-6-5.6-10.2-6.4 1.6 3.9 4.4 6.4 8.6 7.6l1.6-1.2Zm.9 2.2c3.6-1.6 7.4-1.8 11.3-.6-2.9 2.6-6.4 3.4-10.4 2.4l-.9-1.8Zm-1.8 0c-3.6-1.6-7.4-1.8-11.3-.6 2.9 2.6 6.4 3.4 10.4 2.4l.9-1.8ZM15 18h2v12h-2z"/></svg>
+      </span>
+      <div>
+        <h1>Expert construction chanvre</h1>
+        <p class="sous-titre">Planète Chanvre · béton de chanvre, enduits, isolants, réglementation</p>
+      </div>
+    </div>
+    <button id="nouvelle" class="bouton-secondaire" type="button">Nouvelle conversation</button>
+  </header>
+
+  <main class="page">
+    <section class="profils" aria-label="Votre profil">
+      <span class="etiquette">Je suis :</span>
+      <div class="puces" role="radiogroup" id="profils">
+        <button type="button" role="radio" data-profil="particulier" aria-checked="true">Particulier / autoconstructeur</button>
+        <button type="button" role="radio" data-profil="artisan" aria-checked="false">Artisan / maçon</button>
+        <button type="button" role="radio" data-profil="prescripteur" aria-checked="false">Architecte / BE</button>
+        <button type="button" role="radio" data-profil="commercial" aria-checked="false">Équipe commerciale</button>
+      </div>
+    </section>
+
+    <section id="conversation" class="conversation" aria-live="polite">
+      <div id="accueil" class="accueil">
+        <h2>Bonjour, quelle est votre question sur le chanvre ?</h2>
+        <p>Je m'appuie sur les fiches techniques Planète Chanvre et sur une documentation de référence (Règles professionnelles, performances, mise en œuvre…). Mes réponses citent leurs sources.</p>
+        <div id="suggestions" class="suggestions"></div>
+      </div>
+    </section>
+
+    <form id="formulaire" class="saisie">
+      <textarea id="question" rows="2" maxlength="4000" placeholder="Ex. : quelle épaisseur de béton de chanvre pour un mur en neuf ?" required></textarea>
+      <button id="envoyer" type="submit" class="bouton-principal">Envoyer</button>
+    </form>
+    <p class="avertissement">Réponses générées par une IA à partir de documents de référence : à valider par un professionnel avant toute décision de chantier, en particulier pour la structure, le feu et l'assurance.</p>
+  </main>
+
+  <dialog id="dialogue-code">
+    <form method="dialog" class="dialogue">
+      <h2>Accès équipe commerciale</h2>
+      <p>Ce profil donne accès aux documents internes. Saisissez le code d'accès.</p>
+      <input id="code" type="password" autocomplete="current-password" required>
+      <div class="actions">
+        <button value="annuler" class="bouton-secondaire" formnovalidate>Annuler</button>
+        <button value="ok" class="bouton-principal">Valider</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="markdown.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

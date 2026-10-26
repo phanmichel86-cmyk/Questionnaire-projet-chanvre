@@ -34,3 +34,7 @@ tmp/
 *.onnx
 *.h5
 *.tflite
+
+# Base de connaissances privée (documents internes Planète Chanvre) : jamais sur GitHub
+knowledge/prive/*
+!knowledge/prive/README.md

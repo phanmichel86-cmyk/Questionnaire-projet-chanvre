@@ -1,27 +1,24 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
+Profil = Literal["particulier", "artisan", "prescripteur", "commercial"]
 
-class CardMatch(BaseModel):
+
+class MessageHistorique(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=20000)
+
+
+class QuestionRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=4000)
+    profil: Profil = "particulier"
+    historique: list[MessageHistorique] = Field(default_factory=list, max_length=40)
+    code_acces: str | None = None
+
+
+class FicheResume(BaseModel):
     id: str
-    name: str
-    set_name: str | None = None
-    set_id: str | None = None
-    number: str | None = None
-    rarity: str | None = None
-    image_url: str | None = None
-    score: float = Field(ge=0.0, le=1.0)
-
-
-class DetectionInfo(BaseModel):
-    detected: bool
-    width: int
-    height: int
-    aspect_ratio: float
-    sharpness: float
-
-
-class ScanResponse(BaseModel):
-    game: str
-    detection: DetectionInfo
-    candidates: list[CardMatch] = []
-    warnings: list[str] = []
+    titre: str
+    categorie: str
+    acces: str
