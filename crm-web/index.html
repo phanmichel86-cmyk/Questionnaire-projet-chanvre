@@ -1,0 +1,1438 @@
+<title>CRM Chanvre</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout : barre latérale fixe + zone de travail dense ; sur téléphone, barre d'onglets en bas. Teintes de paille et de chanvre vert. */
+:root {
+  --bg: #f2f4f0; --surface: #ffffff; --surface-2: #e9ede6; --line: #d5dbd1; --line-2: #c3cbbf;
+  --fg: #1a221c; --muted: #5b675e; --accent: #2c6a4d; --accent-hover: #245a41; --accent-fg: #ffffff; --accent-soft: #dbeadf;
+  --straw: #b9922f; --straw-soft: #f4ecd5;
+  --ok: #2d7a47; --ok-soft: #dcefe2; --warn: #9a620c; --warn-soft: #f8ead0; --bad: #b0372b; --bad-soft: #f8e0dc; --info: #2b5c87; --info-soft: #dde9f4;
+  --shadow: 0 1px 2px rgba(22, 36, 26, .06), 0 6px 24px rgba(22, 36, 26, .08);
+  --f-display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111612; --surface: #19201b; --surface-2: #212a23; --line: #2d3830; --line-2: #3a473d;
+  --fg: #e3eae4; --muted: #98a69b; --accent: #6dbd90; --accent-hover: #86cda4; --accent-fg: #0d1a12; --accent-soft: #1d3527;
+  --straw: #d8b45a; --straw-soft: #33301f;
+  --ok: #6cc48a; --ok-soft: #1b3324; --warn: #e2a648; --warn-soft: #382c16; --bad: #ef7d6e; --bad-soft: #3c1f1b; --info: #82b2de; --info-soft: #1b2b3b;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.45); color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #111612; --surface: #19201b; --surface-2: #212a23; --line: #2d3830; --line-2: #3a473d;
+  --fg: #e3eae4; --muted: #98a69b; --accent: #6dbd90; --accent-hover: #86cda4; --accent-fg: #0d1a12; --accent-soft: #1d3527;
+  --straw: #d8b45a; --straw-soft: #33301f;
+  --ok: #6cc48a; --ok-soft: #1b3324; --warn: #e2a648; --warn-soft: #382c16; --bad: #ef7d6e; --bad-soft: #3c1f1b; --info: #82b2de; --info-soft: #1b2b3b;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.45); color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 14px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+* { box-sizing: border-box; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -.01em; }
+h1 { font-size: 26px; font-weight: 700; }
+h2 { font-size: 18px; font-weight: 600; }
+h3 { font-size: 15px; font-weight: 600; }
+a { color: var(--accent); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num, .mono { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+
+/* Structure */
+.app { display: grid; grid-template-columns: 228px minmax(0, 1fr); min-height: 100%; }
+.side { position: sticky; top: 0; height: 100vh; height: 100dvh; overflow-y: auto; background: var(--surface); border-right: 1px solid var(--line);
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 14px 18px max(14px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 18px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 6px; }
+.brand-mark { width: 30px; height: 30px; border-radius: 7px; background: var(--accent); color: var(--accent-fg); display: grid; place-items: center; }
+.brand b { font-family: var(--f-display); font-size: 17px; display: block; line-height: 1.1; }
+.brand span { font-size: 11px; color: var(--muted); }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; color: var(--fg); text-decoration: none; font-weight: 500; }
+.nav a:hover { background: var(--surface-2); }
+.nav a.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.nav a .cnt { margin-left: auto; font-family: var(--f-data); font-size: 11px; background: var(--bad); color: #fff; border-radius: 10px; padding: 1px 7px; }
+.nav-sep { height: 1px; background: var(--line); margin: 6px 4px; }
+.side-foot { margin-top: auto; font-size: 12px; color: var(--muted); padding: 0 6px; display: grid; gap: 4px; }
+.mainwrap { min-width: 0; display: flex; flex-direction: column; }
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line);
+  padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; gap: 10px; align-items: center; }
+.search { position: relative; flex: 1; max-width: 520px; }
+.search input { width: 100%; padding: 8px 12px 8px 34px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); }
+.search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.sres { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; z-index: 20; }
+.sres a { display: flex; gap: 10px; align-items: baseline; padding: 9px 12px; color: var(--fg); text-decoration: none; border-bottom: 1px solid var(--line); }
+.sres a:last-child { border-bottom: 0; }
+.sres a:hover, .sres a.hl { background: var(--surface-2); }
+main { padding-block: 22px 96px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); min-width: 0; }
+.page { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.phead { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; justify-content: space-between; }
+.phead .sub { color: var(--muted); margin-top: 4px; }
+.phead > .grow { flex: 1 1 280px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.grow { flex: 1; min-width: 0; }
+
+/* Contrôles */
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-2); background: var(--surface); padding: 7px 12px; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 13px; text-decoration: none; color: var(--fg); white-space: nowrap; }
+.btn:hover { background: var(--surface-2); }
+.btn.pri { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.btn.pri:hover { background: var(--accent-hover); }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.ghost:hover { background: var(--surface-2); }
+.btn.danger { color: var(--bad); border-color: var(--bad); background: transparent; }
+.btn.danger.armed { background: var(--bad); color: #fff; }
+.btn.sm { padding: 4px 9px; font-size: 12px; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: transparent; padding: 6px 12px; cursor: pointer; font-size: 13px; font-weight: 500; }
+.seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.inp, select.inp, textarea.inp { padding: 7px 10px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--surface); min-width: 0; }
+textarea.inp { width: 100%; min-height: 96px; resize: vertical; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 20px; font-size: 12px; font-weight: 600; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.chip.ok { background: var(--ok-soft); color: var(--ok); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.chip.bad { background: var(--bad-soft); color: var(--bad); }
+.chip.info { background: var(--info-soft); color: var(--info); }
+.chip.acc { background: var(--accent-soft); color: var(--accent); }
+.chip.straw { background: var(--straw-soft); color: var(--warn); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { border: 0; background: none; padding: 9px 12px; cursor: pointer; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; }
+.tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Blocs */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.panel > .ph { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.panel > .ph h2, .panel > .ph h3 { flex: 1; min-width: 0; }
+.panel > .pb { padding: 12px 14px; }
+.cols { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start; }
+.cols > * { min-width: 0; }
+.empty { padding: 26px 16px; text-align: center; color: var(--muted); display: grid; gap: 10px; justify-items: center; }
+.empty b { color: var(--fg); font-family: var(--f-display); font-size: 16px; }
+.banner { padding: 10px 14px; border-radius: var(--r); border: 1px solid var(--line); background: var(--surface); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.banner.warn { background: var(--warn-soft); border-color: transparent; color: var(--warn); }
+.banner.ok { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
+.banner.info { background: var(--info-soft); border-color: transparent; color: var(--info); }
+
+/* Lignes d'action */
+.alist { display: flex; flex-direction: column; }
+.arow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.arow:last-child { border-bottom: 0; }
+.arow:hover { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+.check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line-2); background: var(--surface); cursor: pointer; display: grid; place-items: center; color: transparent; margin-top: 1px; padding: 0; }
+.check:hover { border-color: var(--accent); color: var(--accent); }
+.check.done { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.amain { cursor: pointer; min-width: 0; display: grid; gap: 2px; }
+.aline1 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.aline1 b { font-weight: 600; }
+.aline2 { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.aline2 a { color: inherit; }
+.acr { font-size: 13px; color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 4px; }
+.kv { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin-top: 4px; }
+.kv b { color: var(--fg); font-weight: 600; }
+.ameta { text-align: right; display: grid; gap: 2px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.ameta .d { font-family: var(--f-data); color: var(--fg); }
+.late .ameta .d { color: var(--bad); }
+.tchip { font-size: 11px; font-weight: 700; letter-spacing: .02em; padding: 1px 7px; border-radius: 4px; background: var(--surface-2); color: var(--muted); }
+.tchip.rdv { background: var(--straw-soft); color: var(--warn); }
+.tchip.vente { background: var(--accent-soft); color: var(--accent); }
+.tchip.prosp { background: var(--info-soft); color: var(--info); }
+.tchip.sav { background: var(--bad-soft); color: var(--bad); }
+
+/* Tableaux */
+.tablewrap { overflow-x: auto; }
+table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.t th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--surface); }
+table.t th small { display: block; text-transform: none; letter-spacing: 0; font-weight: 500; }
+table.t td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t tr:last-child td { border-bottom: 0; }
+table.t tr.click { cursor: pointer; }
+table.t tr.click:hover td { background: var(--surface-2); }
+table.t td.r, table.t th.r { text-align: right; }
+
+/* Pipeline */
+.kanban { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(205px, 1fr); gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+.kcol { background: var(--surface-2); border-radius: var(--r); display: flex; flex-direction: column; min-height: 160px; }
+.kcol.over { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.khead { padding: 10px 12px; display: grid; gap: 2px; border-bottom: 1px solid var(--line); }
+.khead b { font-family: var(--f-display); font-size: 14px; display: flex; justify-content: space-between; }
+.kbody { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.kcard { background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 10px; cursor: grab; display: grid; gap: 4px; }
+.kcard:hover { border-color: var(--line-2); box-shadow: var(--shadow); }
+.kcard.dragging { opacity: .5; }
+.kcard .t1 { font-weight: 600; }
+.kcard .fig { display: flex; gap: 10px; font-family: var(--f-data); font-size: 12px; }
+.pcards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.pcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 8px; cursor: pointer; text-decoration: none; color: var(--fg); }
+.pcard:hover { border-color: var(--line-2); box-shadow: var(--shadow); }
+.bar { height: 6px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); }
+.stepper { display: flex; gap: 4px; flex-wrap: wrap; }
+.stepper button { border: 1px solid var(--line-2); background: var(--surface); padding: 6px 10px; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--muted); }
+.stepper button.past { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.stepper button.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.stepper button.lost.on { background: var(--bad); border-color: var(--bad); color: #fff; }
+
+/* Fiche */
+.fhead { display: grid; gap: 10px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.facts > div { background: var(--surface); padding: 10px 14px; display: grid; gap: 2px; min-width: 0; }
+.facts .v { font-family: var(--f-data); font-size: 15px; overflow-wrap: anywhere; }
+.facts .v.txt { font-family: var(--f-body); font-size: 14px; }
+.copy { border: 0; background: none; cursor: pointer; color: var(--accent); font-size: 12px; font-weight: 600; padding: 0 4px; }
+.ctlist { display: grid; }
+.ct { padding: 10px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 2px; cursor: pointer; }
+.ct:last-child { border-bottom: 0; }
+.ct:hover { background: var(--surface-2); }
+.jal { display: flex; gap: 10px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+.jal:last-child { border-bottom: 0; }
+.jal.done .jt { text-decoration: line-through; color: var(--muted); }
+
+/* Indicateurs */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 4px; }
+.kpi .v { font-family: var(--f-data); font-size: 24px; letter-spacing: -.02em; }
+.kpi .v small { font-size: 13px; color: var(--muted); margin-left: 3px; }
+.kpi.alert .v { color: var(--bad); }
+.chart { display: grid; gap: 8px; }
+.vbars { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; align-items: end; height: 170px; border-bottom: 1px solid var(--line-2); padding-top: 18px;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px); background-size: 100% 25%; }
+.vbars .b { position: relative; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
+.vbars .b.cur { background: var(--straw); }
+.vbars .b span { position: absolute; top: -17px; left: 50%; transform: translateX(-50%); font-family: var(--f-data); font-size: 11px; color: var(--fg); }
+.vlabels { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; font-size: 10px; color: var(--muted); text-align: center; font-family: var(--f-data); }
+.hbars { display: grid; gap: 8px; }
+.hbar { display: grid; grid-template-columns: minmax(110px, 34%) minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; }
+.hbar .tr { height: 14px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.hbar .tr i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.hbar .val { font-family: var(--f-data); font-size: 12px; min-width: 70px; text-align: right; }
+.src { font-size: 12px; color: var(--muted); }
+
+/* Agenda */
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.day { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); min-height: 140px; display: flex; flex-direction: column; min-width: 0; }
+.day.today { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+.day .dh { padding: 8px 10px; border-bottom: 1px solid var(--line); font-weight: 600; display: flex; justify-content: space-between; gap: 6px; }
+.day .dh .num { color: var(--muted); font-size: 12px; }
+.day .di { padding: 6px; display: grid; gap: 5px; }
+.ev { font-size: 12px; padding: 6px 8px; border-radius: 5px; background: var(--surface-2); cursor: pointer; display: grid; gap: 1px; border-left: 3px solid var(--line-2); overflow-wrap: anywhere; }
+.ev.rdv { border-left-color: var(--straw); background: var(--straw-soft); }
+.ev.fait { opacity: .62; }
+.ev .h { font-family: var(--f-data); font-size: 11px; color: var(--muted); }
+
+/* Tiroir de saisie */
+.drawer-wrap { position: fixed; inset: 0; z-index: 40; }
+.scrim { position: absolute; inset: 0; background: rgba(10, 18, 12, .42); }
+.drawer { position: absolute; top: 0; right: 0; bottom: 0; width: min(560px, 100%); background: var(--surface); box-shadow: var(--shadow); display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.dh2 { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.dh2 h2 { flex: 1; }
+.dbody { flex: 1; overflow-y: auto; padding: 16px 18px; display: grid; gap: 14px; align-content: start; }
+.dfoot { display: flex; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.dfoot .grow { flex: 1; }
+#dform { display: grid; gap: 14px; }
+.fld { display: grid; gap: 4px; min-width: 0; }
+.fld > span { font-size: 12px; font-weight: 600; color: var(--muted); }
+.fld > span em { font-style: normal; font-weight: 500; }
+.fld .inp { width: 100%; }
+.fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.fset { border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; gap: 12px; margin: 0; }
+.fset legend { padding: 0 6px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.checks { display: flex; flex-wrap: wrap; gap: 6px; }
+.checks label { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line-2); padding: 5px 10px; border-radius: 20px; cursor: pointer; font-size: 13px; }
+.checks input:checked + span { color: var(--accent); font-weight: 600; }
+.combo { position: relative; }
+.combo .opts { position: absolute; top: calc(100% + 2px); left: 0; right: 0; max-height: 240px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line-2); border-radius: 7px; box-shadow: var(--shadow); z-index: 5; }
+.combo .opts button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--line); }
+.combo .opts button:hover { background: var(--surface-2); }
+.lines { display: grid; gap: 8px; }
+.line { display: grid; grid-template-columns: minmax(0, 2fr) minmax(70px, 1fr) minmax(80px, 1fr) auto; gap: 6px; align-items: center; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 10px 14px; border-radius: 8px; box-shadow: var(--shadow); z-index: 60; display: flex; gap: 12px; align-items: center; max-width: calc(100% - 32px); }
+.toast button { background: none; border: 0; color: var(--accent-hover); font-weight: 700; cursor: pointer; }
+.tabbar { display: none; }
+.fab { display: none; }
+.imp-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.drop { border: 2px dashed var(--line-2); border-radius: var(--r); padding: 28px; text-align: center; display: grid; gap: 8px; justify-items: center; background: var(--surface); }
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .side { position: fixed; inset: 0 auto 0 0; width: 260px; z-index: 30; transform: translateX(-102%); transition: transform .2s ease; box-shadow: var(--shadow); height: auto; }
+  .side.open { transform: none; }
+  .side-scrim { position: fixed; inset: 0; background: rgba(10,18,12,.4); z-index: 29; }
+  .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; background: var(--surface); border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: max(0px, env(safe-area-inset-right, 0px)); }
+  .tabbar a, .tabbar button { display: grid; justify-items: center; gap: 2px; padding: 8px 2px 7px; font-size: 10.5px; font-weight: 600; color: var(--muted); text-decoration: none; border: 0; background: none; cursor: pointer; position: relative; }
+  .tabbar .on { color: var(--accent); }
+  .tabbar .dot { position: absolute; top: 4px; right: calc(50% - 18px); background: var(--bad); color: #fff; border-radius: 9px; font-size: 9.5px; padding: 0 5px; font-family: var(--f-data); }
+  .fab { display: grid; place-items: center; position: fixed; right: max(16px, calc(env(safe-area-inset-right, 0px) + 16px)); bottom: calc(72px + env(safe-area-inset-bottom, 0px)); width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: var(--accent-fg); border: 0; box-shadow: var(--shadow); z-index: 24; cursor: pointer; }
+  .top .btn.newact { display: none; }
+  .week { grid-template-columns: minmax(0, 1fr); }
+  .day { min-height: 0; }
+  .hide-sm { display: none; }
+  h1 { font-size: 22px; }
+  .arow { grid-template-columns: auto minmax(0, 1fr); }
+  .ameta { grid-column: 2; text-align: left; display: flex; gap: 10px; }
+  .line { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .line select { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <aside class="side" id="side">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21V9"/><path d="M12 13c-3-.5-5-2.6-5.5-6 3 .4 5 2.4 5.5 6Z"/><path d="M12 13c3-.5 5-2.6 5.5-6-3 .4-5 2.4-5.5 6Z"/><path d="M12 9c-1.2-1.6-1.2-3.8 0-6 1.2 2.2 1.2 4.4 0 6Z"/></svg></div>
+      <div><b>CRM Chanvre</b><span>Suivi commercial</span></div>
+    </div>
+    <button class="btn pri" data-act="new-action" style="justify-content:center">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nouvelle action</button>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot" id="side-foot"></div>
+  </aside>
+  <div class="mainwrap">
+    <header class="top">
+      <button class="btn ghost hide-lg" id="menu-btn" data-act="menu" aria-label="Menu" style="display:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <div class="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="gsearch" type="search" placeholder="Chercher une société, un contact, un projet, un téléphone…" autocomplete="off" aria-label="Recherche">
+        <div class="sres" id="gres" hidden></div>
+      </div>
+      <button class="btn newact" data-act="new-action">+ Action</button>
+    </header>
+    <main id="main" aria-live="polite"></main>
+  </div>
+</div>
+<nav class="tabbar" id="tabbar"></nav>
+<button class="fab" data-act="new-action" aria-label="Nouvelle action"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+<div class="drawer-wrap" id="dwrap" hidden><div class="scrim" data-act="close-drawer"></div><section class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dtitle"></section></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+/* ---------- Référentiels ---------- */
+const TYPES = [
+  { g: 'Échanges', c: '', items: [
+    { k: 'appel', l: 'Appel', tpl: 'appel' },
+    { k: 'mail', l: 'Mail' },
+    { k: 'rdv', l: 'Rendez-vous commercial', rdv: 1, tpl: 'rdv', suivi: { k: 'offre', j: 7, t: "Envoyer l'offre après le rendez-vous" } },
+    { k: 'visio', l: 'Rendez-vous en visio', rdv: 1, tpl: 'rdv', suivi: { k: 'offre', j: 7, t: "Envoyer l'offre après la visio" } },
+    { k: 'visite_usine', l: "Visite de l'usine", rdv: 1, tpl: 'rdv', suivi: { k: 'mail', j: 2, t: 'Mail de remerciement après la visite' } },
+  ]},
+  { g: 'Prospection', c: 'prosp', items: [
+    { k: 'appel_prospection', l: 'Appel de prospection', tpl: 'prospection', suivi: { k: 'mail', j: 1, t: 'Envoyer la présentation' } },
+    { k: 'mail_prospection', l: 'Mail de prospection', suivi: { k: 'relance', j: 7, t: 'Relancer le mail de prospection' } },
+    { k: 'linkedin', l: 'Message LinkedIn', suivi: { k: 'relance', j: 7, t: 'Relancer sur LinkedIn' } },
+    { k: 'mailing', l: 'Mailing', suivi: { k: 'appel', j: 5, t: 'Appeler après le mailing' } },
+    { k: 'salon', l: 'Salon / événement', rdv: 1, tpl: 'rdv', suivi: { k: 'mail', j: 2, t: 'Mail de suivi après le salon' } },
+    { k: 'demande_entrante', l: 'Demande entrante', tpl: 'prospection', suivi: { k: 'appel', j: 1, t: 'Rappeler la demande entrante' } },
+  ]},
+  { g: 'Vente', c: 'vente', items: [
+    { k: 'echantillon', l: "Envoi d'échantillon", tpl: 'echantillon', suivi: { k: 'retour_essai', j: 15, t: "Appeler pour le retour d'échantillon" } },
+    { k: 'retour_essai', l: "Retour d'essai", tpl: 'essai' },
+    { k: 'documentation', l: 'Envoi de documentation', suivi: { k: 'relance', j: 10, t: 'Relancer après la documentation' } },
+    { k: 'offre', l: "Envoi d'offre", tpl: 'offre', suivi: { k: 'relance', j: 15, t: "Relancer l'offre" } },
+    { k: 'negociation', l: 'Négociation', tpl: 'offre' },
+    { k: 'relance', l: 'Relance' },
+  ]},
+  { g: 'Après-vente', c: 'sav', items: [
+    { k: 'satisfaction', l: 'Appel de satisfaction' },
+    { k: 'reclamation', l: 'Réclamation', tpl: 'reclamation', suivi: { k: 'appel', j: 7, t: 'Rappeler le client sur la réclamation' } },
+    { k: 'bilan', l: 'Bilan annuel', rdv: 1, tpl: 'rdv' },
+    { k: 'impaye', l: "Relance d'impayé", tpl: 'impaye', suivi: { k: 'impaye', j: 15, t: "Relance d'impayé, niveau suivant" } },
+  ]},
+  { g: 'Interne', c: '', items: [
+    { k: 'tache', l: 'Tâche' },
+    { k: 'note', l: 'Note' },
+  ]},
+];
+const TYPE = {}; for (const g of TYPES) for (const t of g.items) TYPE[t.k] = { ...t, g: g.g, c: t.rdv ? 'rdv' : g.c };
+const PRODUITS = [
+  ['Fibre', ['Fibre technique VF', 'Fibre technique VFL', 'Fibre technique KF', 'Fibre technique SKF']],
+  ['Chènevotte', ['Granulat labellisé', 'Granulat non labellisé', 'Litière Nature', 'Litière Eucalyptus', 'Litière Citronnelle', 'Paillis']],
+  ['Chènevis', ['Chènevis BIO', 'Chènevis FOOD', 'Chènevis FEED']],
+  ['Coproduit', ['Poudre de chanvre']],
+  ['Produit négoce', ['Panneau isolant', 'Protéine de chanvre BIO']],
+  ['Hors CA', ['Semence', 'Paille', 'Prestation / service']],
+];
+const COND = ['Vrac', 'Big bag', 'Sac', 'Balle', 'Palette', 'Autre'];
+const TPL = {
+  appel: [
+    { k: 'joint', l: 'Interlocuteur joint', t: 'sel', o: ['Oui', 'Messagerie', 'Pas de réponse'] },
+    { k: 'objet', l: 'Objet', t: 'txt' },
+  ],
+  prospection: [
+    { k: 'joint', l: 'Interlocuteur joint', t: 'sel', o: ['Oui', 'Messagerie', 'Pas de réponse', 'Mauvais numéro'] },
+    { k: 'besoin', l: 'Besoin', t: 'txt' },
+    { k: 'volume', l: 'Volume annuel estimé', u: 'tonnes', t: 'num' },
+    { k: 'interet', l: 'Intérêt', t: 'sel', o: ['Froid', 'Tiède', 'Chaud'] },
+  ],
+  rdv: [
+    { k: 'besoin', l: 'Besoin exprimé', t: 'txt' },
+    { k: 'produit', l: 'Produit visé', t: 'prod' },
+    { k: 'volume', l: 'Volume annuel estimé', u: 'tonnes', t: 'num' },
+    { k: 'cond', l: 'Conditionnement', t: 'sel', o: COND },
+    { k: 'concurrent', l: 'Fournisseur actuel', t: 'txt' },
+    { k: 'prix', l: 'Prix évoqué', u: '€ / tonne', t: 'num' },
+    { k: 'interet', l: 'Intérêt', t: 'sel', o: ['Froid', 'Tiède', 'Chaud'] },
+  ],
+  echantillon: [
+    { k: 'produit', l: 'Produit', t: 'prod' },
+    { k: 'qte', l: 'Quantité', u: 'kg', t: 'num' },
+    { k: 'suivi', l: 'N° de suivi du colis', t: 'txt' },
+  ],
+  essai: [
+    { k: 'resultat', l: 'Résultat', t: 'sel', o: ['Concluant', 'À revoir', 'Négatif'] },
+    { k: 'produit', l: 'Produit testé', t: 'prod' },
+  ],
+  offre: [
+    { k: 'produit', l: 'Produit', t: 'prod' },
+    { k: 'tonnes', l: 'Tonnage', u: 'tonnes', t: 'num' },
+    { k: 'prix', l: 'Prix', u: '€ / tonne', t: 'num' },
+    { k: 'validite', l: "Valable jusqu'au", t: 'date' },
+  ],
+  reclamation: [
+    { k: 'produit', l: 'Produit', t: 'prod' },
+    { k: 'piece', l: 'N° de pièce ou de lot', t: 'txt' },
+    { k: 'nature', l: 'Nature', t: 'sel', o: ['Qualité', 'Quantité', 'Transport', 'Facturation', 'Autre'] },
+    { k: 'gravite', l: 'Gravité', t: 'sel', o: ['Faible', 'Moyenne', 'Forte'] },
+  ],
+  impaye: [
+    { k: 'piece', l: 'N° de facture', t: 'txt' },
+    { k: 'montant', l: 'Montant', u: 'euros', t: 'num' },
+    { k: 'niveau', l: 'Niveau de relance', t: 'sel', o: ['1 · mail', '2 · appel', '3 · mise en demeure'] },
+    { k: 'compta', l: 'Validé par la comptabilité', t: 'sel', o: ['Oui', 'Non'] },
+  ],
+};
+const ETAPES = [
+  { k: 'contact', l: 'Premier contact', p: 10 }, { k: 'qualif', l: 'Qualification', p: 20 }, { k: 'echantillon', l: 'Échantillon envoyé', p: 30 },
+  { k: 'offre', l: 'Offre envoyée', p: 50 }, { k: 'nego', l: 'Négociation', p: 70 }, { k: 'gagnee', l: 'Gagnée', p: 100 }, { k: 'perdue', l: 'Perdue', p: 0 },
+];
+const ETAPE = Object.fromEntries(ETAPES.map(e => [e.k, e]));
+const STATUTS_P = [ { k: 'a_lancer', l: 'À lancer', c: '' }, { k: 'en_cours', l: 'En cours', c: 'acc' }, { k: 'en_pause', l: 'En pause', c: 'warn' }, { k: 'termine', l: 'Terminé', c: 'ok' }, { k: 'abandonne', l: 'Abandonné', c: 'bad' } ];
+const STATUT_P = Object.fromEntries(STATUTS_P.map(e => [e.k, e]));
+const NATURES = { affaire: 'Affaire commerciale', client: 'Projet client', interne: 'Projet interne' };
+const MOTIFS = ['Prix', 'Délai', 'Qualité', 'Concurrent', 'Projet abandonné', 'Pas de réponse', 'Autre'];
+const SEGMENTS = ['Animalerie / litière', 'Jardin / paillis', 'BTP / construction', 'Industrie / fibre / chènevis', 'Autre'];
+const UNIVERS = ['Habitat & Construction biosourcée', 'Alimentation & Bien-être humain', 'Textile et autres industries', 'Agriculture & Jardin', 'Monde animal', 'R&D & Niches stratégiques'];
+const STATUTS_S = [ { k: 'prospect', l: 'Prospect', c: 'info' }, { k: 'client', l: 'Client actif', c: 'ok' }, { k: 'inactif', l: 'Client inactif', c: 'warn' }, { k: 'perdu', l: 'Perdu', c: 'bad' } ];
+const STATUT_S = Object.fromEntries(STATUTS_S.map(e => [e.k, e]));
+const ROLES = ['Décideur', 'Acheteur', 'Technique', 'Comptabilité', 'Logistique', 'Autre'];
+const LANGUES = ['Français', 'Anglais', 'Allemand', 'Portugais', 'Espagnol', 'Italien', 'Néerlandais', 'Autre'];
+const SOURCES = ['Salon', 'Site web', 'Recommandation', 'Appel entrant', 'Prospection', 'Ancien client', 'Partenaire', 'Autre'];
+
+/* ---------- Outils ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const h = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const pad = n => String(n).padStart(2, '0');
+const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseD = s => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1); };
+const today = () => isoDate(new Date());
+const addDays = (s, n) => { const d = parseD(s); d.setDate(d.getDate() + n); return isoDate(d); };
+const daysBetween = (a, b) => Math.round((parseD(b) - parseD(a)) / 864e5);
+const weekStart = s => { const d = parseD(s); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return isoDate(d); };
+const fy = s => { const [y, m] = String(s).split('-').map(Number); return m >= 9 ? y + 1 : y; };
+const DF = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+const DFY = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+const DFL = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const fmtD = s => { if (!s) return ''; const d = parseD(s); return d.getFullYear() === new Date().getFullYear() ? DF.format(d) : DFY.format(d); };
+const nf0 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
+const eur = n => nf0.format(n || 0) + ' €';
+const ton = n => nf1.format(n || 0) + ' t';
+const num = v => { const n = parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : null; };
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const clean = o => JSON.parse(JSON.stringify(o));
+const relDays = d => { if (!d) return ''; const n = daysBetween(d, today()); return n === 0 ? "aujourd'hui" : n === 1 ? 'hier' : n > 0 ? `il y a ${n} j` : n === -1 ? 'demain' : `dans ${-n} j`; };
+const ICON = {
+  day: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  bell: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>',
+  cal: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+  list: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>',
+  bld: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 9h2a2 2 0 0 1 2 2v10M2 21h20M8 7h4M8 11h4M8 15h4"/></svg>',
+  user: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  proj: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="11" rx="1"/><rect x="17" y="4" width="4" height="7" rx="1"/></svg>',
+  chart: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/></svg>',
+  up: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"/></svg>',
+  menu: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+  ok: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>',
+};
+
+/* ---------- État ---------- */
+const COLLS = ['societes', 'contacts', 'actions', 'projets'];
+const S = {
+  db: null, user: null, me: null, canWrite: true, status: 'loading', slow: false, err: '',
+  societes: new Map(), contacts: new Map(), actions: new Map(), projets: new Map(), loaded: new Set(),
+  names: {}, route: 'journee', param: '', ver: 0, imp: null, showMore: 0,
+  f: { qui: 'moi', socQ: '', socStatut: '', socSeg: '', actType: '', actStatut: '', actQui: '', actQ: '', dormant: 60, projTab: 'pipeline', projQui: '', week: weekStart(today()), ctQ: '', dashQui: 'equipe' },
+};
+try { const sv = JSON.parse(localStorage.getItem('crm_chanvre_f') || '{}'); for (const k of ['qui', 'dormant', 'projTab', 'dashQui']) if (sv[k] != null) S.f[k] = sv[k]; } catch (e) {}
+const saveF = () => { try { localStorage.setItem('crm_chanvre_f', JSON.stringify({ qui: S.f.qui, dormant: S.f.dormant, projTab: S.f.projTab, dashQui: S.f.dashQui })); } catch (e) {} };
+
+const all = c => [...S[c]].map(([id, v]) => ({ id, ...v }));
+const soc = id => (id && S.societes.get(id)) || null;
+const socName = id => soc(id)?.nom || (id ? 'Société supprimée' : '');
+const ctName = c => c ? [c.prenom, c.nom].filter(Boolean).join(' ') : '';
+const who = id => !id ? '—' : id === S.me ? 'Moi' : (S.names[id] || 'Collègue');
+const isMine = (o, k = 'assigne') => (o[k] || o.creePar) === S.me;
+
+let IX = null, IXv = -1;
+function ix() {
+  if (IXv === S.ver) return IX;
+  const bySoc = new Map(), byProj = new Map(), ctBySoc = new Map(), prBySoc = new Map(), last = new Map(), next = new Map(), nextProj = new Map(), lastProj = new Map();
+  const push = (m, k, v) => { if (!k) return; if (!m.has(k)) m.set(k, []); m.get(k).push(v); };
+  const setMin = (m, k, v) => { if (k && (!m.has(k) || (v.date || '9') < (m.get(k).date || '9'))) m.set(k, v); };
+  const setMax = (m, k, v) => { if (k && (!m.has(k) || (v.date || '') > (m.get(k).date || ''))) m.set(k, v); };
+  for (const a of all('actions')) {
+    push(bySoc, a.societeId, a); push(byProj, a.projetId, a);
+    if (a.statut === 'fait') { setMax(last, a.societeId, a); setMax(lastProj, a.projetId, a); }
+    else if (a.statut === 'a_faire') { setMin(next, a.societeId, a); setMin(nextProj, a.projetId, a); }
+  }
+  for (const c of all('contacts')) push(ctBySoc, c.societeId, c);
+  for (const p of all('projets')) push(prBySoc, p.societeId, p);
+  const byDateDesc = (x, y) => ((y.date || '') + (y.heure || '')).localeCompare((x.date || '') + (x.heure || ''));
+  for (const l of bySoc.values()) l.sort(byDateDesc);
+  for (const l of byProj.values()) l.sort(byDateDesc);
+  IX = { bySoc, byProj, ctBySoc, prBySoc, last, next, nextProj, lastProj }; IXv = S.ver;
+  return IX;
+}
+const byWhen = (x, y) => ((x.date || '9') + (x.heure || '')).localeCompare((y.date || '9') + (y.heure || ''));
+
+/* ---------- Base de données ---------- */
+async function boot() {
+  route(); render();
+  if (!window.claude || !window.claude.use) { S.status = 'absent'; render(); return; }
+  const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+  S.user = user;
+  if (!db) { S.status = 'absent'; render(); return; }
+  S.db = db;
+  if (user) {
+    S.me = await user.id();
+    const c = await user.can('data.write');
+    if (c === false) S.canWrite = false;
+  }
+  const confirmed = new Set();
+  const timer = setTimeout(() => { if (confirmed.size < COLLS.length) { S.slow = true; scheduleRender(); } }, 10000);
+  for (const c of COLLS) {
+    db.collection(c).onSnapshot(snap => {
+      const m = new Map(); for (const d of snap.docs) m.set(d.id, d.data());
+      S[c] = m; S.loaded.add(c);
+      if (!snap.metadata.fromCache) confirmed.add(c);
+      if (S.loaded.size === COLLS.length) S.status = 'ready';
+      if (confirmed.size === COLLS.length) { clearTimeout(timer); S.slow = false; }
+      S.ver++; refreshNames(); scheduleRender();
+    }, err => {
+      clearTimeout(timer); S.err = err.code; S.status = S.loaded.size ? 'ready' : 'error'; scheduleRender();
+    });
+  }
+}
+let namesBusy = false;
+async function refreshNames() {
+  if (!S.user || namesBusy) return; namesBusy = true;
+  try {
+    const ids = new Set(S.me ? [S.me] : []);
+    for (const c of ['societes', 'actions', 'projets']) for (const v of S[c].values()) for (const k of ['responsable', 'assigne', 'creePar']) if (v[k]) ids.add(v[k]);
+    const list = [...ids]; if (!list.length) return;
+    const ps = await S.user.profiles(list);
+    let ch = false;
+    for (const id of list) { const n = ps[id]?.name || ''; if (S.names[id] !== n) { S.names[id] = n; ch = true; } }
+    if (ch) scheduleRender();
+  } finally { namesBusy = false; }
+}
+function people() {
+  const ids = Object.keys(S.names).filter(id => id !== S.me);
+  ids.sort((a, b) => (S.names[a] || '').localeCompare(S.names[b] || ''));
+  return S.me ? [S.me, ...ids] : ids;
+}
+async function save(coll, id, data, isNew) {
+  if (!S.db) { toast("La base de données n'est pas disponible sur cette page."); return false; }
+  const now = new Date().toISOString();
+  const body = clean({ ...data, maj: now, majPar: S.me || null, ...(isNew ? { cree: now, creePar: S.me || null } : {}) });
+  try { await S.db.collection(coll).doc(id).set(body); return true; }
+  catch (e) { return dbFail(e); }
+}
+async function remove(coll, id) {
+  try { await S.db.collection(coll).doc(id).delete(); return true; } catch (e) { return dbFail(e); }
+}
+function dbFail(e) {
+  const c = e && e.code;
+  if (c === 'invalid_argument') { S.canWrite = false; toast("Vous n'avez pas le droit de modifier ces données. Demandez au propriétaire de vous passer « Contributeur »."); render(); }
+  else if (c === 'quota_exceeded') toast("La base est pleine (25 000 fiches au maximum). Supprimez d'anciennes actions pour continuer.");
+  else if (c === 'resource_exhausted') toast('Trop de modifications en même temps. Réessayez dans quelques secondes.');
+  else toast("L'enregistrement n'a pas abouti. Vérifiez la connexion et réessayez.");
+  return false;
+}
+
+/* ---------- Navigation ---------- */
+const ROUTES = ['journee', 'relances', 'agenda', 'actions', 'societes', 'contacts', 'projets', 'tableau', 'import'];
+function route() {
+  const hsh = location.hash.replace(/^#/, '');
+  const m = hsh.match(/^(fiche|projet)-([a-z0-9]+)$/i);
+  if (m) { S.route = m[1]; S.param = m[2]; }
+  else { S.route = ROUTES.includes(hsh) ? hsh : 'journee'; S.param = ''; }
+  S.showMore = 0;
+}
+addEventListener('hashchange', () => { route(); closeSide(); render(); window.scrollTo(0, 0); });
+const go = r => { location.hash = r; };
+
+function navCounts() {
+  const t = today(); let late = 0;
+  for (const a of S.actions.values()) if (a.statut === 'a_faire' && a.date && a.date < t && (a.assigne || a.creePar) === S.me) late++;
+  return { late };
+}
+function renderNav() {
+  const { late } = navCounts();
+  const items = [
+    ['journee', 'Ma journée', ICON.day], ['relances', 'À relancer', ICON.bell, late], ['agenda', 'Agenda', ICON.cal], ['actions', 'Journal des actions', ICON.list], 'sep',
+    ['societes', 'Sociétés', ICON.bld], ['contacts', 'Contacts', ICON.user], ['projets', 'Projets et affaires', ICON.proj], 'sep',
+    ['tableau', 'Tableau de bord', ICON.chart], ['import', 'Import Excel', ICON.up],
+  ];
+  const cur = S.route === 'fiche' ? 'societes' : S.route === 'projet' ? 'projets' : S.route;
+  $('#nav').innerHTML = items.map(it => it === 'sep' ? '<div class="nav-sep"></div>' :
+    `<a href="#${it[0]}" class="${cur === it[0] ? 'on' : ''}">${it[2]}<span>${it[1]}</span>${it[3] ? `<span class="cnt" title="Actions en retard">${it[3]}</span>` : ''}</a>`).join('');
+  const tb = [['journee', 'Journée', ICON.day], ['relances', 'Relances', ICON.bell, late], ['societes', 'Sociétés', ICON.bld], ['projets', 'Projets', ICON.proj]];
+  $('#tabbar').innerHTML = tb.map(it => `<a href="#${it[0]}" class="${cur === it[0] ? 'on' : ''}">${it[2]}${it[3] ? `<span class="dot">${it[3]}</span>` : ''}<span>${it[1]}</span></a>`).join('')
+    + `<button data-act="menu">${ICON.menu}<span>Plus</span></button>`;
+  const foot = [];
+  if (S.status === 'absent') foot.push('Base de données indisponible ici.');
+  else if (S.slow) foot.push('Connexion lente : les données peuvent dater.');
+  else if (S.status === 'ready') foot.push(`${S.societes.size} sociétés · ${S.actions.size} actions`);
+  if (!S.canWrite) foot.push('<b>Lecture seule</b>');
+  $('#side-foot').innerHTML = foot.map(x => `<span>${x}</span>`).join('');
+}
+function openSide() { $('#side').classList.add('open'); if (!$('.side-scrim')) { const d = document.createElement('div'); d.className = 'side-scrim'; d.dataset.act = 'close-side'; document.body.appendChild(d); } }
+function closeSide() { $('#side').classList.remove('open'); $('.side-scrim')?.remove(); }
+
+/* ---------- Rendu ---------- */
+let rq = false;
+function scheduleRender() { if (rq) return; rq = true; requestAnimationFrame(() => { rq = false; render(); }); }
+function render() {
+  const a = document.activeElement, main = $('#main');
+  const fid = a && a.id && main.contains(a) ? a.id : null;
+  const sel = fid && typeof a.selectionStart === 'number' ? [a.selectionStart, a.selectionEnd] : null;
+  renderNav();
+  let html;
+  if (S.status === 'loading' && !S.slow) html = `<div class="page"><div class="empty"><b>Chargement des données…</b><span>Les sociétés, contacts, actions et projets arrivent.</span></div></div>`;
+  else if (S.status === 'absent' || S.status === 'error') html = vNoDb();
+  else html = (VIEWS[S.route] || vJournee)();
+  main.innerHTML = (S.slow ? `<div class="page" style="margin-bottom:14px"><div class="banner warn">La base ne répond pas encore. Les données affichées peuvent ne pas être à jour.</div></div>` : '') + html;
+  if (fid) { const e = document.getElementById(fid); if (e) { e.focus(); if (sel && e.setSelectionRange) { try { e.setSelectionRange(sel[0], sel[1]); } catch (x) {} } } }
+  afterRender();
+}
+function vNoDb() {
+  return `<div class="page"><div class="panel"><div class="empty"><b>La base de données n'est pas accessible</b>
+  <span>Ouvrez cette page depuis claude.ai en étant connecté. ${S.err ? `Code : ${h(S.err)}.` : ''}</span></div></div></div>`;
+}
+const ro = () => S.canWrite ? '' : 'disabled';
+const seg = (key, opts) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button data-act="setf" data-k="${key}" data-v="${h(v)}" class="${String(S.f[key]) === String(v) ? 'on' : ''}">${h(l)}</button>`).join('')}</div>`;
+const quiSeg = (key = 'qui') => seg(key, [['moi', 'Mes actions'], ['equipe', "Toute l'équipe"]]);
+
+function rowAction(a, o = {}) {
+  const T = TYPE[a.type] || { l: a.type || 'Action', c: '' };
+  const late = a.statut === 'a_faire' && a.date && a.date < today();
+  const c = a.contactId && S.contacts.get(a.contactId);
+  const p = a.projetId && S.projets.get(a.projetId);
+  const sub = [
+    !o.noSoc && a.societeId ? `<a href="#fiche-${h(a.societeId)}">${h(socName(a.societeId))}</a>` : '',
+    c ? h(ctName(c)) : '',
+    !o.noProj && p ? `<a href="#projet-${h(a.projetId)}">${h(p.titre)}</a>` : '',
+  ].filter(Boolean).join(' · ');
+  const fields = TPL[T.tpl] && a.champs ? TPL[T.tpl].filter(f => a.champs[f.k] !== undefined && a.champs[f.k] !== '').map(f => `<span>${h(f.l)} : <b>${h(a.champs[f.k])}${f.u ? ' ' + h(f.u === 'tonnes' ? 't' : f.u === 'euros' ? '€' : f.u) : ''}</b></span>`).join('') : '';
+  const titre = a.titre || T.l;
+  return `<div class="arow ${late ? 'late' : ''}">
+    <button class="check ${a.statut === 'fait' ? 'done' : ''}" data-act="toggle-done" data-id="${h(a.id)}" ${ro()} aria-label="${a.statut === 'fait' ? 'Remettre à faire' : 'Marquer comme fait'}" title="${a.statut === 'fait' ? 'Fait' : 'Marquer comme fait'}">${ICON.ok}</button>
+    <div class="amain" data-act="edit-action" data-id="${h(a.id)}">
+      <div class="aline1"><span class="tchip ${T.c}">${h(T.l)}</span>${titre !== T.l ? `<b>${h(titre)}</b>` : ''}${late ? '<span class="chip bad">En retard</span>' : ''}</div>
+      ${sub ? `<div class="aline2">${sub}</div>` : ''}
+      ${o.cr && a.compteRendu ? `<div class="acr">${h(a.compteRendu)}</div>` : ''}
+      ${o.cr && fields ? `<div class="kv">${fields}</div>` : ''}
+    </div>
+    <div class="ameta"><span class="d">${a.date ? h(fmtD(a.date)) : 'Sans date'}${a.heure ? ' · ' + h(a.heure) : ''}</span><span>${h(who(a.assigne || a.creePar))}</span></div>
+  </div>`;
+}
+const panel = (title, body, extra = '', cls = '') => `<section class="panel ${cls}"><div class="ph"><h2>${title}</h2>${extra}</div>${body}</section>`;
+const emptyBox = (t, s, btn = '') => `<div class="empty"><b>${t}</b>${s ? `<span>${s}</span>` : ''}${btn}</div>`;
+
+/* --- Ma journée --- */
+function vJournee() {
+  const t = today(), mine = S.f.qui === 'moi';
+  const acts = all('actions').filter(a => a.statut === 'a_faire' && (!mine || isMine(a)));
+  const retard = acts.filter(a => a.date && a.date < t).sort(byWhen);
+  const auj = acts.filter(a => a.date === t).sort(byWhen);
+  const sem = acts.filter(a => a.date > t && a.date <= addDays(t, 7)).sort(byWhen);
+  const sansDate = acts.filter(a => !a.date);
+  const faits = all('actions').filter(a => a.statut === 'fait' && a.date === t && (!mine || isMine(a)));
+  const first = !S.societes.size && !S.actions.size;
+  return `<div class="page">
+    <div class="phead"><div><h1>Ma journée</h1><div class="sub">${h(DFL.format(new Date()))}</div></div>${quiSeg()}</div>
+    ${first ? `<div class="panel">${emptyBox('Votre CRM est prêt', 'Commencez par importer votre liste de clients, ou créez votre première société puis notez une action.',
+      `<div class="row"><a class="btn pri" href="#import">Importer un fichier Excel</a><button class="btn" data-act="new-societe" ${ro()}>Créer une société</button><button class="btn" data-act="new-action" ${ro()}>Noter une action</button></div>`)}</div>` : ''}
+    <div class="kpis">
+      <div class="kpi ${retard.length ? 'alert' : ''}"><span class="label">En retard</span><span class="v">${retard.length}</span></div>
+      <div class="kpi"><span class="label">À faire aujourd'hui</span><span class="v">${auj.length}</span></div>
+      <div class="kpi"><span class="label">Prévues sur 7 jours</span><span class="v">${sem.length}</span></div>
+      <div class="kpi"><span class="label">Faites aujourd'hui</span><span class="v">${faits.length}</span></div>
+    </div>
+    <div class="cols">
+      <div style="display:grid;gap:16px">
+        ${retard.length ? panel('En retard', `<div class="alist">${retard.map(a => rowAction(a)).join('')}</div>`, `<span class="chip bad">${retard.length}</span>`) : ''}
+        ${panel("Aujourd'hui", auj.length ? `<div class="alist">${auj.map(a => rowAction(a)).join('')}</div>` : emptyBox("Rien de prévu aujourd'hui", 'Planifiez un appel ou une relance avec « Nouvelle action ».'))}
+        ${sansDate.length ? panel('Sans date', `<div class="alist">${sansDate.map(a => rowAction(a)).join('')}</div>`) : ''}
+      </div>
+      <div style="display:grid;gap:16px">
+        ${panel('Les 7 prochains jours', sem.length ? `<div class="alist">${sem.map(a => rowAction(a)).join('')}</div>` : emptyBox('Aucune action prévue', ''), `<a class="btn sm ghost" href="#agenda">Agenda</a>`)}
+        ${faits.length ? panel("Fait aujourd'hui", `<div class="alist">${faits.map(a => rowAction(a, { cr: 1 })).join('')}</div>`) : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* --- À relancer --- */
+function vRelances() {
+  const t = today(), mine = S.f.qui === 'moi', X = ix(), N = +S.f.dormant;
+  const retard = all('actions').filter(a => a.statut === 'a_faire' && a.date && a.date < t && (!mine || isMine(a))).sort(byWhen);
+  const ouverts = all('projets').filter(p => (p.nature === 'affaire' ? !['gagnee', 'perdue'].includes(p.etape) : ['a_lancer', 'en_cours'].includes(p.statut)) && (!mine || isMine(p, 'responsable')));
+  const sansSuite = ouverts.filter(p => !X.nextProj.has(p.id)).map(p => ({ p, last: X.lastProj.get(p.id) }))
+    .sort((a, b) => (a.last?.date || '').localeCompare(b.last?.date || ''));
+  const dormants = all('societes').filter(s => ['client', 'prospect'].includes(s.statut || 'prospect') && !X.next.has(s.id) && (!mine || isMine(s, 'responsable')))
+    .map(s => ({ s, last: X.last.get(s.id) }))
+    .filter(x => { const ref = x.last?.date || (x.s.cree || '').slice(0, 10); return !ref || daysBetween(ref, t) >= N; })
+    .sort((a, b) => (a.last?.date || '').localeCompare(b.last?.date || ''));
+  const plan = (sid, pid, label) => `<button class="btn sm" data-act="new-action" data-type="relance" data-societe="${h(sid || '')}" data-projet="${h(pid || '')}" data-titre="${h(label)}" ${ro()}>Planifier</button>`;
+  return `<div class="page">
+    <div class="phead"><div><h1>À relancer</h1><div class="sub">Ce qui attend une action de votre part, du plus urgent au moins urgent.</div></div>${quiSeg()}</div>
+    ${panel('Actions en retard', retard.length ? `<div class="alist">${retard.map(a => rowAction(a)).join('')}</div>` : emptyBox('Aucune action en retard', 'Tout est à jour.'), `<span class="chip ${retard.length ? 'bad' : 'ok'}">${retard.length}</span>`)}
+    ${panel('Affaires et projets sans prochaine action', sansSuite.length ? `<div class="tablewrap"><table class="t"><thead><tr><th>Projet</th><th class="hide-sm">Société</th><th>Étape</th><th>Dernière action</th><th></th></tr></thead><tbody>
+      ${sansSuite.map(({ p, last }) => `<tr><td><a href="#projet-${h(p.id)}"><b>${h(p.titre)}</b></a><div class="small muted">${h(NATURES[p.nature] || '')}</div></td>
+        <td class="hide-sm">${p.societeId ? `<a href="#fiche-${h(p.societeId)}">${h(socName(p.societeId))}</a>` : '<span class="muted">Interne</span>'}</td>
+        <td>${p.nature === 'affaire' ? `<span class="chip acc">${h(ETAPE[p.etape]?.l || '')}</span>` : `<span class="chip ${STATUT_P[p.statut]?.c || ''}">${h(STATUT_P[p.statut]?.l || '')}</span>`}</td>
+        <td>${last ? `${h(TYPE[last.type]?.l || '')}<div class="small muted">${h(relDays(last.date))}</div>` : '<span class="chip warn">Jamais</span>'}</td>
+        <td class="r">${plan(p.societeId, p.id, 'Relancer : ' + p.titre)}</td></tr>`).join('')}</tbody></table></div>`
+      : emptyBox('Chaque projet ouvert a une prochaine action', ''), `<span class="chip ${sansSuite.length ? 'warn' : 'ok'}">${sansSuite.length}</span>`)}
+    ${panel('Clients et prospects sans contact', dormants.length ? `<div class="tablewrap"><table class="t"><thead><tr><th>Société</th><th>Statut</th><th>Dernier contact</th><th class="hide-sm">Responsable</th><th></th></tr></thead><tbody>
+      ${dormants.slice(0, 150).map(({ s, last }) => `<tr><td><a href="#fiche-${h(s.id)}"><b>${h(s.nom)}</b></a>${s.ville ? `<div class="small muted">${h(s.ville)}</div>` : ''}</td>
+        <td><span class="chip ${STATUT_S[s.statut || 'prospect']?.c}">${h(STATUT_S[s.statut || 'prospect']?.l)}</span></td>
+        <td>${last ? `<span class="num">${h(fmtD(last.date))}</span><div class="small muted">${h(TYPE[last.type]?.l || '')} · ${h(relDays(last.date))}</div>` : '<span class="chip warn">Aucun</span>'}</td>
+        <td class="hide-sm">${h(who(s.responsable))}</td><td class="r">${plan(s.id, '', 'Reprendre contact')}</td></tr>`).join('')}</tbody></table></div>
+        ${dormants.length > 150 ? `<div class="pb small muted">Les 150 plus anciens sur ${dormants.length}.</div>` : ''}`
+      : emptyBox(`Aucune société sans contact depuis ${N} jours`, ''),
+      `<label class="small muted" for="f-dormant">Sans contact depuis</label><select id="f-dormant" class="inp" data-f="dormant">${[30, 60, 90, 180, 365].map(n => `<option value="${n}" ${N === n ? 'selected' : ''}>${n} jours</option>`).join('')}</select>`)}
+  </div>`;
+}
+
+/* --- Agenda --- */
+function vAgenda() {
+  const ws = S.f.week, t = today(), mine = S.f.qui === 'moi';
+  const days = [...Array(7)].map((_, i) => addDays(ws, i));
+  const acts = all('actions').filter(a => a.date >= ws && a.date <= days[6] && (!mine || isMine(a))).sort(byWhen);
+  const lbl = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' });
+  return `<div class="page">
+    <div class="phead"><div><h1>Agenda</h1><div class="sub">Semaine du ${h(lbl.format(parseD(ws)))} au ${h(DFY.format(parseD(days[6])))}</div></div>
+      <div class="row">${quiSeg()}<div class="seg"><button data-act="week" data-d="-7" aria-label="Semaine précédente">‹</button><button data-act="week" data-d="0">Cette semaine</button><button data-act="week" data-d="7" aria-label="Semaine suivante">›</button></div></div></div>
+    <div class="week">${days.map(d => { const its = acts.filter(a => a.date === d); const dd = parseD(d);
+      return `<div class="day ${d === t ? 'today' : ''}"><div class="dh"><span>${h(new Intl.DateTimeFormat('fr-FR', { weekday: 'long' }).format(dd))}</span><span class="num">${dd.getDate()}/${dd.getMonth() + 1}</span></div>
+      <div class="di">${its.map(a => { const T = TYPE[a.type] || { l: a.type }; return `<div class="ev ${T.rdv ? 'rdv' : ''} ${a.statut === 'fait' ? 'fait' : ''}" data-act="edit-action" data-id="${h(a.id)}">
+        <span class="h">${a.heure ? h(a.heure) + ' · ' : ''}${h(T.l)}${a.statut === 'fait' ? ' · fait' : ''}</span><b>${h(a.titre && a.titre !== T.l ? a.titre : socName(a.societeId) || T.l)}</b>${a.titre && a.titre !== T.l && a.societeId ? `<span class="muted">${h(socName(a.societeId))}</span>` : ''}</div>`; }).join('')}
+      <button class="btn sm ghost" data-act="new-action" data-date="${d}" ${ro()} style="justify-self:start">+ Ajouter</button></div></div>`; }).join('')}</div>
+  </div>`;
+}
+
+/* --- Journal des actions --- */
+function vActions() {
+  const f = S.f, q = norm(f.actQ);
+  let acts = all('actions').filter(a => (!f.actType || a.type === f.actType) && (!f.actStatut || a.statut === f.actStatut) && (!f.actQui || (a.assigne || a.creePar) === f.actQui));
+  if (q) acts = acts.filter(a => norm([a.titre, a.compteRendu, socName(a.societeId), TYPE[a.type]?.l].join(' ')).includes(q));
+  acts.sort((x, y) => ((y.date || '') + (y.heure || '')).localeCompare((x.date || '') + (x.heure || '')));
+  const lim = 150 + S.showMore;
+  return `<div class="page">
+    <div class="phead"><div><h1>Journal des actions</h1><div class="sub">${acts.length} action${acts.length > 1 ? 's' : ''}</div></div><button class="btn pri" data-act="new-action" ${ro()}>+ Nouvelle action</button></div>
+    <div class="row">
+      <input id="f-actQ" class="inp grow" data-f="actQ" placeholder="Chercher dans les comptes rendus…" value="${h(f.actQ)}" style="max-width:320px">
+      <select id="f-actType" class="inp" data-f="actType"><option value="">Tous les types</option>${typeOptions(f.actType)}</select>
+      <select id="f-actStatut" class="inp" data-f="actStatut"><option value="">À faire et faites</option><option value="a_faire" ${f.actStatut === 'a_faire' ? 'selected' : ''}>À faire</option><option value="fait" ${f.actStatut === 'fait' ? 'selected' : ''}>Faites</option><option value="annule" ${f.actStatut === 'annule' ? 'selected' : ''}>Annulées</option></select>
+      <select id="f-actQui" class="inp" data-f="actQui"><option value="">Tout le monde</option>${people().map(id => `<option value="${h(id)}" ${f.actQui === id ? 'selected' : ''}>${h(who(id))}</option>`).join('')}</select>
+    </div>
+    <section class="panel">${acts.length ? `<div class="alist">${acts.slice(0, lim).map(a => rowAction(a, { cr: 1 })).join('')}</div>${acts.length > lim ? `<div class="pb"><button class="btn" data-act="more">Afficher 150 de plus</button></div>` : ''}` : emptyBox('Aucune action', 'Notez votre premier appel, rendez-vous ou mail.')}</section>
+  </div>`;
+}
+
+/* --- Sociétés --- */
+function vSocietes() {
+  const f = S.f, q = norm(f.socQ), X = ix();
+  let list = all('societes').filter(s => (!f.socStatut || (s.statut || 'prospect') === f.socStatut) && (!f.socSeg || (s.segments || []).includes(f.socSeg)));
+  if (q) list = list.filter(s => norm([s.nom, s.codeTiers, s.ville, s.pays, s.tel, s.email].join(' ')).includes(q));
+  list.sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr'));
+  const lim = 200 + S.showMore;
+  return `<div class="page">
+    <div class="phead"><div><h1>Sociétés</h1><div class="sub">${list.length} sur ${S.societes.size}</div></div>
+      <div class="row"><a class="btn" href="#import">Importer</a><button class="btn pri" data-act="new-societe" ${ro()}>+ Société</button></div></div>
+    <div class="row">
+      <input id="f-socQ" class="inp grow" data-f="socQ" placeholder="Nom, code tiers, ville, téléphone…" value="${h(f.socQ)}" style="max-width:320px">
+      <select id="f-socStatut" class="inp" data-f="socStatut"><option value="">Tous les statuts</option>${STATUTS_S.map(s => `<option value="${s.k}" ${f.socStatut === s.k ? 'selected' : ''}>${s.l}</option>`).join('')}</select>
+      <select id="f-socSeg" class="inp" data-f="socSeg"><option value="">Tous les segments</option>${SEGMENTS.map(s => `<option ${f.socSeg === s ? 'selected' : ''}>${h(s)}</option>`).join('')}</select>
+    </div>
+    <section class="panel">${list.length ? `<div class="tablewrap"><table class="t"><thead><tr><th>Société</th><th class="hide-sm">Segment</th><th>Statut</th><th>Dernier contact</th><th class="hide-sm">Prochaine action</th><th class="hide-sm">Responsable</th></tr></thead><tbody>
+      ${list.slice(0, lim).map(s => { const l = X.last.get(s.id), n = X.next.get(s.id), st = STATUT_S[s.statut || 'prospect'];
+        return `<tr class="click" data-act="go" data-to="fiche-${h(s.id)}"><td><b>${h(s.nom)}</b><div class="small muted">${h([s.codeTiers, s.ville, s.pays].filter(Boolean).join(' · '))}</div></td>
+        <td class="hide-sm small">${h((s.segments || []).join(', '))}</td><td><span class="chip ${st?.c}">${h(st?.l)}</span></td>
+        <td>${l ? `<span class="num small">${h(fmtD(l.date))}</span><div class="small muted">${h(TYPE[l.type]?.l || '')}</div>` : '<span class="muted small">—</span>'}</td>
+        <td class="hide-sm">${n ? `<span class="num small ${n.date && n.date < today() ? 'chip bad' : ''}">${h(n.date ? fmtD(n.date) : 'Sans date')}</span><div class="small muted">${h(n.titre || TYPE[n.type]?.l || '')}</div>` : '<span class="muted small">Aucune</span>'}</td>
+        <td class="hide-sm small">${h(who(s.responsable))}</td></tr>`; }).join('')}</tbody></table></div>
+      ${list.length > lim ? `<div class="pb"><button class="btn" data-act="more">Afficher 200 de plus</button></div>` : ''}`
+      : emptyBox(S.societes.size ? 'Aucune société ne correspond' : 'Aucune société pour le moment', S.societes.size ? 'Modifiez les filtres.' : 'Importez votre fichier clients ou créez une société.',
+        S.societes.size ? '' : `<div class="row"><a class="btn pri" href="#import">Importer un fichier Excel</a><button class="btn" data-act="new-societe" ${ro()}>Créer une société</button></div>`)}</section>
+  </div>`;
+}
+
+/* --- Contacts --- */
+function vContacts() {
+  const q = norm(S.f.ctQ);
+  let list = all('contacts');
+  if (q) list = list.filter(c => norm([c.prenom, c.nom, c.fonction, c.email, c.tel, c.portable, socName(c.societeId)].join(' ')).includes(q));
+  list.sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr'));
+  return `<div class="page">
+    <div class="phead"><div><h1>Contacts</h1><div class="sub">${list.length} contact${list.length > 1 ? 's' : ''}</div></div><button class="btn pri" data-act="new-contact" ${ro()}>+ Contact</button></div>
+    <input id="f-ctQ" class="inp" data-f="ctQ" placeholder="Nom, société, fonction, mail…" value="${h(S.f.ctQ)}" style="max-width:360px">
+    <section class="panel">${list.length ? `<div class="tablewrap"><table class="t"><thead><tr><th>Contact</th><th>Société</th><th class="hide-sm">Rôle</th><th>Téléphone</th><th class="hide-sm">Mail</th></tr></thead><tbody>
+      ${list.slice(0, 300).map(c => `<tr class="click" data-act="edit-contact" data-id="${h(c.id)}"><td><b>${h(ctName(c))}</b><div class="small muted">${h(c.fonction || '')}</div></td>
+        <td>${c.societeId ? `<a href="#fiche-${h(c.societeId)}">${h(socName(c.societeId))}</a>` : ''}</td><td class="hide-sm small">${h(c.role || '')}</td>
+        <td class="num small">${h(c.portable || c.tel || '')}</td><td class="hide-sm small">${h(c.email || '')}</td></tr>`).join('')}</tbody></table></div>`
+      : emptyBox('Aucun contact', 'Ajoutez les interlocuteurs depuis la fiche de leur société.')}</section>
+  </div>`;
+}
+
+/* --- Fiche société --- */
+const copyBtn = v => v ? `<button class="copy" data-act="copy" data-v="${h(v)}">Copier</button>` : '';
+const telLink = v => v ? `<a href="tel:${h(String(v).replace(/[^\d+]/g, ''))}" class="num">${h(v)}</a>${copyBtn(v)}` : '<span class="muted">—</span>';
+function vFiche() {
+  const s = soc(S.param);
+  if (!s) return `<div class="page"><div class="panel">${emptyBox('Société introuvable', 'Elle a peut-être été supprimée.', '<a class="btn" href="#societes">Retour aux sociétés</a>')}</div></div>`;
+  const id = S.param, X = ix(), st = STATUT_S[s.statut || 'prospect'];
+  const acts = X.bySoc.get(id) || [];
+  const todo = acts.filter(a => a.statut === 'a_faire').sort(byWhen);
+  const done = acts.filter(a => a.statut === 'fait');
+  const cts = (X.ctBySoc.get(id) || []).sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
+  const prs = X.prBySoc.get(id) || [];
+  const last = X.last.get(id);
+  return `<div class="page">
+    <div class="fhead">
+      <div class="row small"><a href="#societes">Sociétés</a><span class="muted">/</span></div>
+      <div class="phead"><div class="grow"><h1>${h(s.nom)}</h1>
+        <div class="row" style="margin-top:8px"><span class="chip ${st?.c}">${h(st?.l)}</span>${(s.segments || []).map(x => `<span class="chip">${h(x)}</span>`).join('')}${s.univers ? `<span class="chip straw">${h(s.univers)}</span>` : ''}${s.codeTiers ? `<span class="chip mono">${h(s.codeTiers)}</span>` : ''}</div></div>
+        <div class="row"><button class="btn pri" data-act="new-action" data-societe="${h(id)}" ${ro()}>+ Action</button><button class="btn" data-act="new-projet" data-societe="${h(id)}" ${ro()}>+ Projet</button><button class="btn" data-act="new-contact" data-societe="${h(id)}" ${ro()}>+ Contact</button><button class="btn ghost" data-act="edit-societe" data-id="${h(id)}" ${ro()}>Modifier</button></div>
+      </div>
+      <div class="facts">
+        <div><span class="label">Téléphone</span><span class="v">${telLink(s.tel)}</span></div>
+        <div><span class="label">Mail</span><span class="v txt">${s.email ? `${h(s.email)}${copyBtn(s.email)}` : '<span class="muted">—</span>'}</span></div>
+        <div><span class="label">Ville</span><span class="v txt">${h([s.cp, s.ville].filter(Boolean).join(' ') || '—')}${s.pays ? ` · ${h(s.pays)}` : ''}</span></div>
+        <div><span class="label">Responsable</span><span class="v txt">${h(who(s.responsable))}</span></div>
+        <div><span class="label">Dernier contact</span><span class="v txt">${last ? `${h(fmtD(last.date))} <span class="muted small">${h(relDays(last.date))}</span>` : '—'}</span></div>
+        <div><span class="label">Source</span><span class="v txt">${h(s.source || '—')}</span></div>
+      </div>
+      ${s.notes ? `<div class="banner" style="white-space:pre-wrap">${h(s.notes)}</div>` : ''}
+    </div>
+    <div class="cols">
+      <div style="display:grid;gap:16px">
+        ${panel('Prochaines actions', todo.length ? `<div class="alist">${todo.map(a => rowAction(a, { noSoc: 1 })).join('')}</div>` : emptyBox('Aucune action prévue', '', `<button class="btn sm" data-act="new-action" data-societe="${h(id)}" data-type="relance" ${ro()}>Planifier une relance</button>`), `<span class="chip">${todo.length}</span>`)}
+        ${panel('Historique des échanges', done.length ? `<div class="alist">${done.map(a => rowAction(a, { noSoc: 1, cr: 1 })).join('')}</div>` : emptyBox('Aucun échange noté', 'Chaque appel, mail ou rendez-vous noté apparaîtra ici.'), `<span class="chip">${done.length}</span>`)}
+      </div>
+      <div style="display:grid;gap:16px">
+        ${panel('Projets et affaires', prs.length ? `<div class="alist">${prs.map(p => `<a class="ct" href="#projet-${h(p.id)}" style="text-decoration:none;color:inherit"><div class="aline1"><b>${h(p.titre)}</b>${projChip(p)}</div><div class="small muted">${h(NATURES[p.nature])}${p.montant ? ` · <span class="num">${eur(p.montant)}</span>` : ''}${p.tonnes ? ` · <span class="num">${ton(p.tonnes)}</span>` : ''}</div></a>`).join('')}</div>` : emptyBox('Aucun projet', ''), `<button class="btn sm ghost" data-act="new-projet" data-societe="${h(id)}" ${ro()}>+ Projet</button>`)}
+        ${panel('Contacts', cts.length ? `<div class="ctlist">${cts.map(c => `<div class="ct" data-act="edit-contact" data-id="${h(c.id)}"><div class="aline1"><b>${h(ctName(c))}</b>${c.role ? `<span class="chip">${h(c.role)}</span>` : ''}</div>
+            <div class="small muted">${h(c.fonction || '')}${c.langue && c.langue !== 'Français' ? ' · ' + h(c.langue) : ''}</div>
+            <div class="small">${c.portable ? `<span class="num">${h(c.portable)}</span> ` : ''}${c.tel ? `<span class="num">${h(c.tel)}</span> ` : ''}${c.email ? h(c.email) : ''}</div></div>`).join('')}</div>` : emptyBox('Aucun contact', ''), `<button class="btn sm ghost" data-act="new-contact" data-societe="${h(id)}" ${ro()}>+ Contact</button>`)}
+      </div>
+    </div>
+  </div>`;
+}
+function projChip(p) {
+  if (p.nature === 'affaire') { const e = ETAPE[p.etape] || ETAPES[0]; return `<span class="chip ${p.etape === 'gagnee' ? 'ok' : p.etape === 'perdue' ? 'bad' : 'acc'}">${h(e.l)}</span>`; }
+  const s = STATUT_P[p.statut] || STATUTS_P[0]; return `<span class="chip ${s.c}">${h(s.l)}</span>`;
+}
+
+/* --- Projets --- */
+function projMontant(p) { return +p.montant || 0; }
+function vProjets() {
+  const tab = S.f.projTab, quiF = S.f.projQui, X = ix();
+  const list = all('projets').filter(p => !quiF || (p.responsable || p.creePar) === quiF);
+  const tabs = [['pipeline', 'Pipeline des affaires'], ['client', 'Projets clients'], ['interne', 'Projets internes']];
+  let body;
+  if (tab === 'pipeline') {
+    const aff = list.filter(p => p.nature === 'affaire');
+    body = `<div class="kanban" id="kanban">${ETAPES.map(e => { const its = aff.filter(p => (p.etape || 'contact') === e.k).sort((a, b) => (a.dateDecision || '9').localeCompare(b.dateDecision || '9'));
+      const sum = its.reduce((s, p) => s + projMontant(p), 0);
+      return `<div class="kcol" data-drop="${e.k}"><div class="khead"><b><span>${h(e.l)}</span><span class="num">${its.length}</span></b><span class="small muted num">${eur(sum)} · ${e.p} %</span></div>
+        <div class="kbody">${its.map(p => { const n = X.nextProj.get(p.id);
+          return `<div class="kcard" draggable="${S.canWrite}" data-drag="${h(p.id)}" data-act="go" data-to="projet-${h(p.id)}"><span class="t1">${h(p.titre)}</span><span class="small muted">${h(socName(p.societeId))}</span>
+          <span class="fig">${p.montant ? `<span>${eur(p.montant)}</span>` : ''}${p.tonnes ? `<span>${ton(p.tonnes)}</span>` : ''}</span>
+          ${!['gagnee', 'perdue'].includes(e.k) ? (n ? `<span class="small ${n.date && n.date < today() ? 'chip bad' : 'muted'}">Prochaine : ${h(n.date ? fmtD(n.date) : 'sans date')}</span>` : '<span class="chip warn" style="justify-self:start">Aucune prochaine action</span>') : ''}</div>`; }).join('')}
+        ${e.k === 'contact' ? `<button class="btn sm ghost" data-act="new-projet" data-nature="affaire" ${ro()}>+ Affaire</button>` : ''}</div></div>`; }).join('')}</div>
+      <div class="src">Glissez une carte d'une colonne à l'autre pour changer d'étape, ou ouvrez l'affaire. Montant par colonne = somme des montants estimés, en euros ; le pourcentage est la probabilité par défaut de l'étape.</div>`;
+  } else {
+    const pl = list.filter(p => p.nature === tab).sort((a, b) => (STATUTS_P.findIndex(s => s.k === a.statut) - STATUTS_P.findIndex(s => s.k === b.statut)) || (a.echeance || '9').localeCompare(b.echeance || '9'));
+    body = pl.length ? `<div class="pcards">${pl.map(p => { const j = p.jalons || [], d = j.filter(x => x.fait).length, nj = j.filter(x => !x.fait).sort((a, b) => (a.date || '9').localeCompare(b.date || '9'))[0];
+      return `<a class="pcard" href="#projet-${h(p.id)}"><div class="aline1"><b class="grow">${h(p.titre)}</b>${projChip(p)}</div>
+      <span class="small muted">${p.societeId ? h(socName(p.societeId)) : 'Projet interne'} · ${h(who(p.responsable))}</span>
+      ${j.length ? `<div class="bar" aria-label="${d} jalons sur ${j.length}"><i style="width:${Math.round(100 * d / j.length)}%"></i></div><span class="small">${d} / ${j.length} jalons${nj ? ` · prochain : ${h(nj.titre)}${nj.date ? ' (' + h(fmtD(nj.date)) + ')' : ''}` : ''}</span>` : '<span class="small muted">Aucun jalon</span>'}
+      ${p.echeance ? `<span class="small">Échéance : <span class="num">${h(fmtD(p.echeance))}</span></span>` : ''}</a>`; }).join('')}</div>`
+      : `<div class="panel">${emptyBox(tab === 'client' ? 'Aucun projet client' : 'Aucun projet interne', tab === 'client' ? 'Un chantier, une homologation, un contrat annuel en plusieurs livraisons…' : 'Un salon, un nouveau produit, un partenariat…', `<button class="btn pri" data-act="new-projet" data-nature="${tab}" ${ro()}>Créer un projet</button>`)}</div>`;
+  }
+  return `<div class="page">
+    <div class="phead"><div><h1>Projets et affaires</h1><div class="sub">${list.filter(p => p.nature === 'affaire' && !['gagnee', 'perdue'].includes(p.etape)).length} affaires ouvertes · ${list.filter(p => p.nature !== 'affaire' && p.statut === 'en_cours').length} projets en cours</div></div>
+      <div class="row"><select id="f-projQui" class="inp" data-f="projQui"><option value="">Tout le monde</option>${people().map(id => `<option value="${h(id)}" ${quiF === id ? 'selected' : ''}>${h(who(id))}</option>`).join('')}</select>
+      <button class="btn pri" data-act="new-projet" data-nature="${tab === 'pipeline' ? 'affaire' : tab}" ${ro()}>+ ${tab === 'pipeline' ? 'Affaire' : 'Projet'}</button></div></div>
+    <div class="tabs">${tabs.map(([k, l]) => `<button data-act="setf" data-k="projTab" data-v="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    ${body}
+  </div>`;
+}
+
+/* --- Fiche projet --- */
+function vProjet() {
+  const p = S.projets.get(S.param);
+  if (!p) return `<div class="page"><div class="panel">${emptyBox('Projet introuvable', 'Il a peut-être été supprimé.', '<a class="btn" href="#projets">Retour aux projets</a>')}</div></div>`;
+  const id = S.param, X = ix(), acts = X.byProj.get(id) || [];
+  const todo = acts.filter(a => a.statut === 'a_faire').sort(byWhen), done = acts.filter(a => a.statut === 'fait');
+  const aff = p.nature === 'affaire', ct = p.contactId && S.contacts.get(p.contactId);
+  const curI = ETAPES.findIndex(e => e.k === (p.etape || 'contact'));
+  const j = p.jalons || [];
+  return `<div class="page">
+    <div class="fhead">
+      <div class="row small"><a href="#projets">Projets</a><span class="muted">/</span>${p.societeId ? `<a href="#fiche-${h(p.societeId)}">${h(socName(p.societeId))}</a>` : '<span class="muted">Interne</span>'}</div>
+      <div class="phead"><div class="grow"><h1>${h(p.titre)}</h1><div class="row" style="margin-top:8px"><span class="chip straw">${h(NATURES[p.nature])}</span>${projChip(p)}${ct ? `<span class="chip">${h(ctName(ct))}</span>` : ''}</div></div>
+        <div class="row"><button class="btn pri" data-act="new-action" data-projet="${h(id)}" data-societe="${h(p.societeId || '')}" ${ro()}>+ Action</button><button class="btn ghost" data-act="edit-projet" data-id="${h(id)}" ${ro()}>Modifier</button></div></div>
+      ${aff ? `<div class="stepper" role="group" aria-label="Étape">${ETAPES.map((e, i) => `<button data-act="set-etape" data-id="${h(id)}" data-v="${e.k}" class="${e.k === 'perdue' ? 'lost ' : ''}${i === curI ? 'on' : (i < curI && p.etape !== 'perdue' ? 'past' : '')}" ${ro()}>${h(e.l)}</button>`).join('')}</div>`
+        : `<div class="stepper" role="group" aria-label="Statut">${STATUTS_P.map(s => `<button data-act="set-statut" data-id="${h(id)}" data-v="${s.k}" class="${s.k === p.statut ? 'on' : ''}" ${ro()}>${h(s.l)}</button>`).join('')}</div>`}
+      ${aff && p.etape === 'gagnee' ? `<div class="banner ok"><b>Affaire gagnée.</b> Pensez à saisir la commande dans Divalto : le CRM ne crée aucune commande.</div>` : ''}
+      ${aff && p.etape === 'perdue' ? `<div class="banner warn"><b>Affaire perdue</b>${p.motifPerte ? ' · motif : ' + h(p.motifPerte) : ' · motif non renseigné'}</div>` : ''}
+      <div class="facts">
+        ${aff ? `<div><span class="label">Montant estimé</span><span class="v">${p.montant ? eur(p.montant) : '—'}</span></div>
+        <div><span class="label">Tonnage</span><span class="v">${p.tonnes ? ton(p.tonnes) : '—'}</span></div>
+        <div><span class="label">Probabilité</span><span class="v">${p.proba ?? ETAPE[p.etape]?.p ?? 0} %</span></div>
+        <div><span class="label">Montant pondéré</span><span class="v">${eur(projMontant(p) * (p.proba ?? ETAPE[p.etape]?.p ?? 0) / 100)}</span></div>
+        <div><span class="label">Décision prévue</span><span class="v txt">${p.dateDecision ? h(fmtD(p.dateDecision)) : '—'}</span></div>`
+        : `<div><span class="label">Début</span><span class="v txt">${p.debut ? h(fmtD(p.debut)) : '—'}</span></div>
+        <div><span class="label">Échéance</span><span class="v txt">${p.echeance ? h(fmtD(p.echeance)) : '—'}</span></div>
+        <div><span class="label">Jalons faits</span><span class="v">${j.filter(x => x.fait).length} / ${j.length}</span></div>`}
+        <div><span class="label">Responsable</span><span class="v txt">${h(who(p.responsable))}</span></div>
+      </div>
+      ${aff && (p.lignes || []).length ? `<section class="panel"><div class="tablewrap"><table class="t"><thead><tr><th>Produit</th><th class="r">Tonnage<small>tonnes</small></th><th class="r">Prix<small>€ / tonne</small></th><th class="r">Montant<small>euros</small></th></tr></thead><tbody>
+        ${p.lignes.map(l => `<tr><td>${h(l.produit)}</td><td class="r num">${l.tonnes != null ? nf1.format(l.tonnes) : ''}</td><td class="r num">${l.prix != null ? nf0.format(l.prix) : ''}</td><td class="r num">${l.tonnes != null && l.prix != null ? eur(l.tonnes * l.prix) : ''}</td></tr>`).join('')}</tbody></table></div></section>` : ''}
+      ${p.description ? `<div class="banner" style="white-space:pre-wrap">${h(p.description)}</div>` : ''}
+    </div>
+    <div class="cols">
+      <div style="display:grid;gap:16px">
+        ${panel('Prochaines actions', todo.length ? `<div class="alist">${todo.map(a => rowAction(a, { noProj: 1 })).join('')}</div>` : emptyBox('Aucune action prévue', '', `<button class="btn sm" data-act="new-action" data-projet="${h(id)}" data-societe="${h(p.societeId || '')}" ${ro()}>Planifier la suite</button>`))}
+        ${panel('Historique', done.length ? `<div class="alist">${done.map(a => rowAction(a, { noProj: 1, cr: 1 })).join('')}</div>` : emptyBox('Aucun échange noté', ''))}
+      </div>
+      ${aff ? '' : panel('Jalons', `${j.length ? `<div>${j.map((x, i) => `<div class="jal ${x.fait ? 'done' : ''}"><button class="check ${x.fait ? 'done' : ''}" data-act="jalon" data-id="${h(id)}" data-i="${i}" ${ro()} aria-label="Jalon fait">${ICON.ok}</button><span class="jt grow">${h(x.titre)}</span><span class="num small muted">${x.date ? h(fmtD(x.date)) : ''}</span></div>`).join('')}</div>` : emptyBox('Aucun jalon', 'Découpez le projet en étapes datées.')}
+        ${S.canWrite ? `<form class="pb row" data-form="jalon" data-id="${h(id)}"><input class="inp grow" name="titre" placeholder="Nouveau jalon" required id="jal-t"><input class="inp" type="date" name="date" id="jal-d"><button class="btn">Ajouter</button></form>` : ''}`)}
+    </div>
+  </div>`;
+}
+
+/* --- Tableau de bord --- */
+function vTableau() {
+  const t = today(), mine = S.f.dashQui === 'moi';
+  const acts = all('actions').filter(a => !mine || isMine(a));
+  const faits = acts.filter(a => a.statut === 'fait');
+  const projs = all('projets').filter(p => !mine || isMine(p, 'responsable'));
+  const ouvertes = projs.filter(p => p.nature === 'affaire' && !['gagnee', 'perdue'].includes(p.etape || 'contact'));
+  const pond = ouvertes.reduce((s, p) => s + projMontant(p) * (p.proba ?? ETAPE[p.etape || 'contact'].p) / 100, 0);
+  const tonnes = ouvertes.reduce((s, p) => s + (+p.tonnes || 0), 0);
+  const f7 = faits.filter(a => a.date > addDays(t, -7) && a.date <= t).length;
+  const rdv7 = acts.filter(a => a.statut === 'a_faire' && TYPE[a.type]?.rdv && a.date >= t && a.date <= addDays(t, 7)).length;
+  const late = acts.filter(a => a.statut === 'a_faire' && a.date && a.date < t).length;
+  // Actions faites par semaine, 12 semaines
+  const ws0 = weekStart(t), weeks = [...Array(12)].map((_, i) => addDays(ws0, -7 * (11 - i)));
+  const perW = weeks.map(w => faits.filter(a => a.date >= w && a.date < addDays(w, 7)).length);
+  const maxW = Math.max(4, ...perW);
+  // Pipeline par étape
+  const stages = ETAPES.filter(e => !['gagnee', 'perdue'].includes(e.k)).map(e => { const its = ouvertes.filter(p => (p.etape || 'contact') === e.k); return { l: e.l, n: its.length, v: its.reduce((s, p) => s + projMontant(p), 0) }; });
+  const maxS = Math.max(1, ...stages.map(s => s.v));
+  // Types d'action, 90 jours
+  const byT = {}; for (const a of faits.filter(a => a.date > addDays(t, -90))) byT[a.type] = (byT[a.type] || 0) + 1;
+  const tl = Object.entries(byT).sort((a, b) => b[1] - a[1]).slice(0, 10); const maxT = Math.max(1, ...tl.map(x => x[1]));
+  // Exercice septembre → août
+  const ex = fy(t), closed = projs.filter(p => p.nature === 'affaire' && ['gagnee', 'perdue'].includes(p.etape) && fy((p.dateCloture || p.maj || t).slice(0, 10)) === ex);
+  const won = closed.filter(p => p.etape === 'gagnee'), lost = closed.filter(p => p.etape === 'perdue');
+  const wonV = won.reduce((s, p) => s + projMontant(p), 0), lostV = lost.reduce((s, p) => s + projMontant(p), 0);
+  const motifs = {}; for (const p of lost) motifs[p.motifPerte || 'Non renseigné'] = (motifs[p.motifPerte || 'Non renseigné'] || 0) + 1;
+  const fmtW = w => { const d = parseD(w); return `${d.getDate()}/${d.getMonth() + 1}`; };
+  return `<div class="page">
+    <div class="phead"><div><h1>Tableau de bord</h1><div class="sub">Activité commerciale et affaires en cours</div></div>${seg('dashQui', [['moi', 'Moi'], ['equipe', "Toute l'équipe"]])}</div>
+    <div class="kpis">
+      <div class="kpi"><span class="label">Actions faites, 7 jours</span><span class="v">${f7}</span></div>
+      <div class="kpi"><span class="label">Rendez-vous, 7 prochains jours</span><span class="v">${rdv7}</span></div>
+      <div class="kpi ${late ? 'alert' : ''}"><span class="label">Actions en retard</span><span class="v">${late}</span></div>
+      <div class="kpi"><span class="label">Affaires ouvertes</span><span class="v">${ouvertes.length}</span></div>
+      <div class="kpi"><span class="label">Montant pondéré</span><span class="v">${nf0.format(pond)}<small>€</small></span></div>
+      <div class="kpi"><span class="label">Tonnage en jeu</span><span class="v">${nf1.format(tonnes)}<small>t</small></span></div>
+    </div>
+    <div class="cols">
+      ${panel('Actions faites par semaine', `<div class="pb chart"><div class="label">Nombre d'actions</div>
+        <div class="vbars">${perW.map((n, i) => `<div class="b ${i === 11 ? 'cur' : ''}" style="height:${(100 * n / maxW).toFixed(1)}%" title="Semaine du ${fmtW(weeks[i])} : ${n} actions"><span>${n || ''}</span></div>`).join('')}</div>
+        <div class="vlabels">${weeks.map(fmtW).map((w, i) => `<span>${i % 2 ? '' : w}</span>`).join('')}</div>
+        <div class="src">Actions marquées « fait », par semaine (lundi), sur 12 semaines. La barre ocre est la semaine en cours.</div></div>`)}
+      ${panel('Affaires ouvertes par étape', `<div class="pb chart"><div class="hbars">${stages.map(s => `<div class="hbar"><span>${h(s.l)} <span class="muted small">(${s.n})</span></span><div class="tr"><i style="width:${(100 * s.v / maxS).toFixed(1)}%"></i></div><span class="val">${eur(s.v)}</span></div>`).join('')}</div>
+        <div class="src">Montant estimé non pondéré, en euros. Pondéré par la probabilité : ${eur(pond)}.</div></div>`)}
+      ${panel('Types d\'actions, 90 jours', `<div class="pb chart">${tl.length ? `<div class="hbars">${tl.map(([k, n]) => `<div class="hbar"><span>${h(TYPE[k]?.l || k)}</span><div class="tr"><i style="width:${(100 * n / maxT).toFixed(1)}%"></i></div><span class="val">${n}</span></div>`).join('')}</div>` : '<div class="muted">Aucune action faite sur la période.</div>'}
+        <div class="src">Nombre d'actions faites sur les 90 derniers jours, par type.</div></div>`)}
+      ${panel(`Exercice ${ex} · sept. ${ex - 1} → août ${ex}`, `<div class="pb chart"><div class="facts" style="margin-bottom:6px">
+        <div><span class="label">Gagnées</span><span class="v">${won.length} · ${eur(wonV)}</span></div><div><span class="label">Perdues</span><span class="v">${lost.length} · ${eur(lostV)}</span></div>
+        <div><span class="label">Taux de réussite</span><span class="v">${closed.length ? Math.round(100 * won.length / closed.length) + ' %' : '—'}</span></div></div>
+        ${lost.length ? `<div class="label">Motifs de perte</div><div class="row">${Object.entries(motifs).map(([m, n]) => `<span class="chip bad">${h(m)} · ${n}</span>`).join('')}</div>` : ''}
+        <div class="src">Affaires passées à « Gagnée » ou « Perdue » pendant l'exercice. Taux = gagnées ÷ affaires closes, en nombre.</div></div>`)}
+    </div>
+  </div>`;
+}
+
+/* --- Import Excel --- */
+const IMP_FIELDS = [
+  ['nom', 'Raison sociale *', /^(nom|raison|soci|client|intitul|libell|name)/],
+  ['codeTiers', 'Code tiers Divalto', /(code|tiers|compte)/],
+  ['tel', 'Téléphone', /(t[eé]l|phone|portable)/],
+  ['email', 'Mail', /(mail|courriel)/],
+  ['adresse', 'Adresse', /(adresse|rue|address)/],
+  ['cp', 'Code postal', /(postal|^cp$|zip)/],
+  ['ville', 'Ville', /(ville|city|localit)/],
+  ['pays', 'Pays', /(pays|country)/],
+];
+function vImport() {
+  const I = S.imp;
+  const fileBox = `<label class="drop" id="drop" for="impfile"><b style="font-family:var(--f-display);font-size:16px">Déposez un fichier Excel ou CSV</b><span class="muted">par exemple « client divalto.xlsx » ou votre fichier de prospects</span><span class="btn">Choisir un fichier</span></label>
+    <input type="file" id="impfile" accept=".xlsx,.xls,.csv" hidden>`;
+  if (!I) return `<div class="page"><div class="phead"><div><h1>Import Excel</h1><div class="sub">Créer des sociétés à partir d'une liste existante</div></div></div>
+    ${S.canWrite ? fileBox : '<div class="banner warn">Vous êtes en lecture seule : l\'import est réservé aux personnes qui peuvent modifier.</div>'}
+    <div class="src">Le CRM reconnaît les colonnes courantes (raison sociale, code, téléphone, mail, ville, pays). Une société déjà présente, avec le même code tiers ou le même nom, n'est pas créée en double : seuls ses champs vides sont complétés.</div></div>`;
+  if (I.loading) return `<div class="page"><div class="panel">${emptyBox('Lecture du fichier…', '')}</div></div>`;
+  const hdr = I.headers, rows = I.rows;
+  return `<div class="page">
+    <div class="phead"><div><h1>Import Excel</h1><div class="sub">${h(I.name)} · ${rows.length} lignes${I.sheets.length > 1 ? '' : ''}</div></div><button class="btn ghost" data-act="imp-reset">Changer de fichier</button></div>
+    ${I.sheets.length > 1 ? `<div class="row"><label for="imp-sheet" class="small muted">Onglet</label><select id="imp-sheet" class="inp">${I.sheets.map(s => `<option ${s === I.sheet ? 'selected' : ''}>${h(s)}</option>`).join('')}</select></div>` : ''}
+    <section class="panel"><div class="ph"><h2>Correspondance des colonnes</h2></div><div class="pb imp-map">
+      ${IMP_FIELDS.map(([k, l]) => `<label class="fld"><span>${l}</span><select class="inp" data-imp="${k}"><option value="">— ignorer —</option>${hdr.map((c, i) => `<option value="${i}" ${I.map[k] === i ? 'selected' : ''}>${h(c || 'Colonne ' + (i + 1))}</option>`).join('')}</select></label>`).join('')}
+      <label class="fld"><span>Statut des nouvelles sociétés</span><select class="inp" id="imp-statut">${STATUTS_S.map(s => `<option value="${s.k}" ${I.statut === s.k ? 'selected' : ''}>${s.l}</option>`).join('')}</select></label>
+      <label class="fld"><span>Segment (facultatif)</span><select class="inp" id="imp-seg"><option value="">—</option>${SEGMENTS.map(s => `<option ${I.seg === s ? 'selected' : ''}>${h(s)}</option>`).join('')}</select></label>
+    </div></section>
+    <section class="panel"><div class="ph"><h2>Aperçu</h2><span class="small muted">5 premières lignes</span></div><div class="tablewrap"><table class="t"><thead><tr>${IMP_FIELDS.filter(([k]) => I.map[k] != null).map(([, l]) => `<th>${h(l.replace(' *', ''))}</th>`).join('')}</tr></thead><tbody>
+      ${rows.slice(0, 5).map(r => `<tr>${IMP_FIELDS.filter(([k]) => I.map[k] != null).map(([k]) => `<td>${h(r[I.map[k]])}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section>
+    ${I.done ? `<div class="banner ok"><b>Import terminé.</b> ${I.done.created} sociétés créées, ${I.done.updated} complétées, ${I.done.skipped} ignorées (sans nom ou déjà complètes).</div>` : ''}
+    ${I.progress != null && !I.done ? `<div class="panel pb" style="display:grid;gap:6px"><span>Import en cours : ${I.progress} / ${I.total}</span><div class="bar"><i style="width:${Math.round(100 * I.progress / I.total)}%"></i></div></div>` : ''}
+    <div class="row"><button class="btn pri" data-act="imp-run" ${I.map.nom == null || I.progress != null ? 'disabled' : ''}>Importer ${rows.length} lignes</button>${I.map.nom == null ? '<span class="small muted">Choisissez au moins la colonne « Raison sociale ».</span>' : ''}</div>
+  </div>`;
+}
+let xlsxP = null;
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve();
+  if (!xlsxP) xlsxP = new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = res; s.onerror = () => { xlsxP = null; rej(); }; document.head.appendChild(s); });
+  return xlsxP;
+}
+async function readImport(file) {
+  S.imp = { loading: 1 }; render();
+  try {
+    await loadXLSX();
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    S.imp = { name: file.name, wb, sheets: wb.SheetNames, statut: 'client', seg: '' };
+    setSheet(wb.SheetNames[0]);
+  } catch (e) { S.imp = null; toast("Le fichier n'a pas pu être lu. Vérifiez qu'il s'agit d'un fichier Excel ou CSV."); render(); }
+}
+function setSheet(name) {
+  const I = S.imp, ws = I.wb.Sheets[name];
+  const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+  let hi = raw.findIndex(r => r.filter(c => String(c).trim()).length >= 2); if (hi < 0) hi = 0;
+  I.sheet = name; I.headers = (raw[hi] || []).map(c => String(c).trim());
+  I.rows = raw.slice(hi + 1).filter(r => r.some(c => String(c).trim()));
+  I.map = {}; I.done = null; I.progress = null;
+  for (const [k, , re] of IMP_FIELDS) { const i = I.headers.findIndex((c, idx) => re.test(norm(c)) && !Object.values(I.map).includes(idx)); if (i >= 0) I.map[k] = i; }
+  render();
+}
+async function runImport() {
+  const I = S.imp; if (!I || I.map.nom == null) return;
+  const byCode = new Map(), byName = new Map();
+  for (const s of all('societes')) { if (s.codeTiers) byCode.set(norm(s.codeTiers), s); byName.set(norm(s.nom), s); }
+  const jobs = []; let skipped = 0;
+  for (const r of I.rows) {
+    const v = {}; for (const [k] of IMP_FIELDS) if (I.map[k] != null) { const x = String(r[I.map[k]] ?? '').trim(); if (x) v[k] = x; }
+    if (!v.nom) { skipped++; continue; }
+    const ex = (v.codeTiers && byCode.get(norm(v.codeTiers))) || byName.get(norm(v.nom));
+    if (ex) {
+      const add = {}; for (const k in v) if (!ex[k]) add[k] = v[k];
+      if (!Object.keys(add).length) { skipped++; continue; }
+      const { id, ...rest } = ex; jobs.push({ id, data: { ...rest, ...add }, isNew: false });
+    } else {
+      const id = newId(); const d = { ...v, statut: I.statut, segments: I.seg ? [I.seg] : [], responsable: S.me || null };
+      jobs.push({ id, data: d, isNew: true }); byName.set(norm(v.nom), { id, ...d }); if (v.codeTiers) byCode.set(norm(v.codeTiers), { id, ...d });
+    }
+  }
+  I.total = jobs.length; I.progress = 0; render();
+  let created = 0, updated = 0, k = 0, failed = false;
+  const worker = async () => { while (k < jobs.length && !failed) { const j = jobs[k++]; const ok = await save('societes', j.id, j.data, j.isNew); if (!ok) { failed = true; break; } j.isNew ? created++ : updated++; I.progress++; if (I.progress % 10 === 0) scheduleRender(); } };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  I.done = { created, updated, skipped: skipped + (failed ? jobs.length - created - updated : 0) };
+  render();
+  toast(failed ? "L'import s'est arrêté avant la fin." : `${created} sociétés créées, ${updated} complétées.`);
+}
+
+const VIEWS = { journee: vJournee, relances: vRelances, agenda: vAgenda, actions: vActions, societes: vSocietes, contacts: vContacts, fiche: vFiche, projets: vProjets, projet: vProjet, tableau: vTableau, import: vImport };
+
+/* ---------- Formulaires ---------- */
+function typeOptions(sel) { return TYPES.map(g => `<optgroup label="${h(g.g)}">${g.items.map(t => `<option value="${t.k}" ${sel === t.k ? 'selected' : ''}>${h(t.l)}</option>`).join('')}</optgroup>`).join(''); }
+function prodOptions(sel) { return `<option value="">—</option>` + PRODUITS.map(([f, l]) => `<optgroup label="${h(f)}">${l.map(p => `<option ${sel === p ? 'selected' : ''}>${h(p)}</option>`).join('')}</optgroup>`).join(''); }
+function peopleSelect(name, sel) {
+  const ids = people(); if (sel && !ids.includes(sel)) ids.push(sel);
+  return `<select class="inp" name="${name}" data-people>${ids.map(id => `<option value="${h(id)}" ${id === (sel || S.me) ? 'selected' : ''}>${h(who(id))}</option>`).join('')}${S.user ? '<option value="__search">Chercher un collègue…</option>' : ''}</select>
+    <div class="combo" data-people-search hidden><input class="inp" placeholder="Nom du collègue" style="width:100%"><div class="opts" hidden></div></div>`;
+}
+function socCombo(sel) {
+  return `<div class="combo" data-soc-combo><input class="inp" id="f-soc-q" autocomplete="off" placeholder="Taper un nom de société" value="${h(sel ? socName(sel) : '')}" style="width:100%"><input type="hidden" name="societeId" value="${h(sel || '')}"><div class="opts" hidden></div></div>`;
+}
+function contactOptions(sid, sel) {
+  const l = sid ? (ix().ctBySoc.get(sid) || []) : [];
+  return `<option value="">—</option>${l.map(c => `<option value="${h(c.id)}" ${sel === c.id ? 'selected' : ''}>${h(ctName(c))}${c.fonction ? ' · ' + h(c.fonction) : ''}</option>`).join('')}`;
+}
+function projetOptions(sid, sel) {
+  const l = all('projets').filter(p => (sid ? p.societeId === sid : true) && (p.id === sel || (p.nature === 'affaire' ? !['gagnee', 'perdue'].includes(p.etape) : !['termine', 'abandonne'].includes(p.statut))));
+  return `<option value="">—</option>${l.map(p => `<option value="${h(p.id)}" ${sel === p.id ? 'selected' : ''}>${h(p.titre)}${!sid && p.societeId ? ' · ' + h(socName(p.societeId)) : ''}</option>`).join('')}`;
+}
+function tplFields(type, champs = {}) {
+  const T = TYPE[type], fs = T && TPL[T.tpl];
+  if (!fs) return '';
+  return `<fieldset class="fset"><legend>Compte rendu · ${h(T.l)}</legend><div class="fgrid">${fs.map(f => {
+    const v = champs[f.k] ?? '', n = `c_${f.k}`;
+    const inp = f.t === 'sel' ? `<select class="inp" name="${n}"><option value="">—</option>${f.o.map(o => `<option ${v === o ? 'selected' : ''}>${h(o)}</option>`).join('')}</select>`
+      : f.t === 'prod' ? `<select class="inp" name="${n}">${prodOptions(v)}</select>`
+      : f.t === 'num' ? `<input class="inp" name="${n}" inputmode="decimal" value="${h(v)}">`
+      : f.t === 'date' ? `<input class="inp" type="date" name="${n}" value="${h(v)}">`
+      : `<input class="inp" name="${n}" value="${h(v)}">`;
+    return `<label class="fld"><span>${h(f.l)}${f.u ? ` <em>(${h(f.u)})</em>` : ''}</span>${inp}</label>`; }).join('')}</div></fieldset>`;
+}
+function suiviBlock(type, on) {
+  const s = TYPE[type]?.suivi;
+  return `<fieldset class="fset" id="suivi"><legend>Prochaine action</legend>
+    <label class="row"><input type="checkbox" name="suivi_on" ${on && s ? 'checked' : ''}><span>Planifier une suite</span></label>
+    <div class="fgrid"><label class="fld"><span>Type</span><select class="inp" name="suivi_type">${typeOptions(s?.k || 'relance')}</select></label>
+    <label class="fld"><span>Date</span><input class="inp" type="date" name="suivi_date" value="${addDays(today(), s?.j || 7)}"></label></div>
+    <label class="fld"><span>Intitulé</span><input class="inp" name="suivi_titre" value="${h(s?.t || 'Relancer')}"></label></fieldset>`;
+}
+function fAction(a, pre = {}) {
+  const isNew = !a; a = a || { type: pre.type || 'appel', statut: pre.date && pre.date > today() ? 'a_faire' : (pre.type === 'relance' ? 'a_faire' : 'fait'), date: pre.date || (pre.type === 'relance' ? addDays(today(), 1) : today()), societeId: pre.societe || '', projetId: pre.projet || '', titre: pre.titre || '', assigne: S.me };
+  if (!a.societeId && a.projetId) a.societeId = S.projets.get(a.projetId)?.societeId || '';
+  const wasTodo = !isNew && a.statut === 'a_faire';
+  return { title: isNew ? 'Nouvelle action' : 'Action', body: `<form id="dform" data-form="action" data-id="${h(a.id || '')}">
+    <div class="fgrid"><label class="fld"><span>Type</span><select class="inp" name="type" id="f-type">${typeOptions(a.type)}</select></label>
+    <label class="fld"><span>Statut</span><select class="inp" name="statut" id="f-statut"><option value="fait" ${a.statut === 'fait' ? 'selected' : ''}>Fait</option><option value="a_faire" ${a.statut === 'a_faire' ? 'selected' : ''}>À faire</option><option value="annule" ${a.statut === 'annule' ? 'selected' : ''}>Annulé</option></select></label></div>
+    <label class="fld"><span>Intitulé <em>(facultatif)</em></span><input class="inp" name="titre" value="${h(a.titre || '')}" placeholder="Par exemple : présenter la litière Eucalyptus"></label>
+    <div class="fgrid"><label class="fld"><span>Date</span><input class="inp" type="date" name="date" value="${h(a.date || '')}"></label>
+    <label class="fld"><span>Heure</span><input class="inp" type="time" name="heure" value="${h(a.heure || '')}"></label>
+    <label class="fld"><span>Durée <em>(minutes)</em></span><input class="inp" name="duree" inputmode="numeric" value="${h(a.duree ?? '')}"></label></div>
+    <label class="fld"><span>Société</span>${socCombo(a.societeId)}</label>
+    <div class="fgrid"><label class="fld"><span>Contact</span><select class="inp" name="contactId" id="f-contact">${contactOptions(a.societeId, a.contactId)}</select></label>
+    <label class="fld"><span>Projet ou affaire</span><select class="inp" name="projetId" id="f-projet">${projetOptions(a.societeId, a.projetId)}</select></label></div>
+    <label class="fld"><span>Pour</span>${peopleSelect('assigne', a.assigne || a.creePar)}</label>
+    <div id="tpl">${tplFields(a.type, a.champs)}</div>
+    <label class="fld"><span>Compte rendu, notes</span><textarea class="inp" name="compteRendu" placeholder="Ce qui a été dit, décidé, promis…">${h(a.compteRendu || '')}</textarea></label>
+    <div id="suivi-wrap" ${a.statut === 'fait' ? '' : 'hidden'}>${suiviBlock(a.type, isNew || wasTodo)}</div>
+  </form>`, foot: footer('action', a.id, isNew), mount: m => mountAction(m, a) };
+}
+function footer(kind, id, isNew) {
+  return `${!isNew && S.canWrite ? `<button class="btn danger" data-act="del" data-kind="${kind}" data-id="${h(id)}">Supprimer</button>` : ''}<span class="grow"></span>
+    <button class="btn" data-act="close-drawer">Annuler</button>${S.canWrite ? `<button class="btn pri" form="dform" type="submit">Enregistrer</button>` : ''}`;
+}
+function mountAction(m, a) {
+  const f = $('#dform', m);
+  const typeSel = $('#f-type', f), statutSel = $('#f-statut', f);
+  typeSel.addEventListener('change', () => {
+    const fd = new FormData(f), ch = {}; for (const [k, v] of fd) if (k.startsWith('c_')) ch[k.slice(2)] = v;
+    $('#tpl', f).innerHTML = tplFields(typeSel.value, ch);
+    const on = $('[name=suivi_on]', f)?.checked; $('#suivi-wrap', f).innerHTML = suiviBlock(typeSel.value, on || !a.id);
+  });
+  statutSel.addEventListener('change', () => { $('#suivi-wrap', f).hidden = statutSel.value !== 'fait'; });
+  mountSocCombo(f, sid => { $('#f-contact', f).innerHTML = contactOptions(sid, ''); $('#f-projet', f).innerHTML = projetOptions(sid, ''); });
+  mountPeople(f);
+}
+function mountSocCombo(f, onChange) {
+  const box = $('[data-soc-combo]', f); if (!box) return;
+  const q = $('input.inp', box), hid = $('input[type=hidden]', box), opts = $('.opts', box);
+  const show = () => {
+    const s = norm(q.value), l = all('societes').filter(x => !s || norm(x.nom + ' ' + (x.codeTiers || '')).includes(s)).sort((a, b) => a.nom.localeCompare(b.nom, 'fr')).slice(0, 12);
+    opts.innerHTML = l.map(x => `<button type="button" data-sid="${h(x.id)}">${h(x.nom)}${x.ville ? ` <span class="muted small">${h(x.ville)}</span>` : ''}</button>`).join('')
+      + (q.value.trim() && !l.some(x => norm(x.nom) === s) && S.canWrite ? `<button type="button" data-new="1">+ Créer la société « ${h(q.value.trim())} »</button>` : '')
+      + (hid.value ? `<button type="button" data-sid="">Aucune société</button>` : '');
+    opts.hidden = !opts.innerHTML;
+  };
+  q.addEventListener('focus', show); q.addEventListener('input', show);
+  q.addEventListener('blur', () => setTimeout(() => { opts.hidden = true; if (!q.value.trim() && hid.value) { hid.value = ''; onChange(''); } else if (hid.value) q.value = socName(hid.value); }, 180));
+  opts.addEventListener('mousedown', e => e.preventDefault());
+  opts.addEventListener('click', async e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.new) { const id = newId(), nom = q.value.trim(); if (await save('societes', id, { nom, statut: 'prospect', segments: [], responsable: S.me || null }, true)) { S.societes.set(id, { nom, statut: 'prospect' }); hid.value = id; q.value = nom; onChange(id); toast(`Société « ${nom} » créée.`); } }
+    else { hid.value = b.dataset.sid; q.value = b.dataset.sid ? socName(b.dataset.sid) : ''; onChange(b.dataset.sid); }
+    opts.hidden = true;
+  });
+}
+function mountPeople(f) {
+  for (const sel of $$('[data-people]', f)) {
+    const box = sel.nextElementSibling, inp = $('input', box), opts = $('.opts', box); let prev = sel.value;
+    sel.addEventListener('change', () => { if (sel.value === '__search') { box.hidden = false; inp.focus(); sel.value = prev; } else prev = sel.value; });
+    const run = async () => { const r = await S.user.search(inp.value); opts.innerHTML = r.map(p => `<button type="button" data-uid="${h(p.id)}"></button>`).join(''); $$('button', opts).forEach((b, i) => b.textContent = r[i].name); opts.hidden = !r.length; };
+    inp.addEventListener('input', run); inp.addEventListener('focus', run);
+    opts.addEventListener('mousedown', e => e.preventDefault());
+    opts.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const id = b.dataset.uid; S.names[id] = b.textContent;
+      if (![...sel.options].some(o => o.value === id)) { const o = document.createElement('option'); o.value = id; o.textContent = b.textContent; sel.insertBefore(o, sel.lastElementChild); }
+      sel.value = id; prev = id; box.hidden = true; inp.value = ''; });
+  }
+}
+function fSociete(s, pre = {}) {
+  const isNew = !s; s = s || { statut: 'prospect', segments: [], responsable: S.me, nom: pre.nom || '' };
+  return { title: isNew ? 'Nouvelle société' : 'Modifier la société', body: `<form id="dform" data-form="societe" data-id="${h(s.id || '')}">
+    <label class="fld"><span>Raison sociale *</span><input class="inp" name="nom" required value="${h(s.nom || '')}"></label>
+    <div class="fgrid"><label class="fld"><span>Statut</span><select class="inp" name="statut">${STATUTS_S.map(x => `<option value="${x.k}" ${s.statut === x.k ? 'selected' : ''}>${x.l}</option>`).join('')}</select></label>
+    <label class="fld"><span>Code tiers Divalto</span><input class="inp mono" name="codeTiers" value="${h(s.codeTiers || '')}" placeholder="CC…"></label></div>
+    <div class="fld"><span>Segments</span><div class="checks">${SEGMENTS.map(x => `<label><input type="checkbox" name="segments" value="${h(x)}" ${(s.segments || []).includes(x) ? 'checked' : ''}><span>${h(x)}</span></label>`).join('')}</div></div>
+    <label class="fld"><span>Univers commercial</span><select class="inp" name="univers"><option value="">—</option>${UNIVERS.map(x => `<option ${s.univers === x ? 'selected' : ''}>${h(x)}</option>`).join('')}</select></label>
+    <div class="fgrid"><label class="fld"><span>Téléphone</span><input class="inp" name="tel" type="tel" value="${h(s.tel || '')}"></label><label class="fld"><span>Mail</span><input class="inp" name="email" type="email" value="${h(s.email || '')}"></label></div>
+    <label class="fld"><span>Adresse</span><input class="inp" name="adresse" value="${h(s.adresse || '')}"></label>
+    <div class="fgrid"><label class="fld"><span>Code postal</span><input class="inp" name="cp" value="${h(s.cp || '')}"></label><label class="fld"><span>Ville</span><input class="inp" name="ville" value="${h(s.ville || '')}"></label><label class="fld"><span>Pays</span><input class="inp" name="pays" value="${h(s.pays || '')}" placeholder="France"></label></div>
+    <div class="fgrid"><label class="fld"><span>Site web</span><input class="inp" name="site" value="${h(s.site || '')}"></label><label class="fld"><span>Source</span><select class="inp" name="source"><option value="">—</option>${SOURCES.map(x => `<option ${s.source === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label></div>
+    <label class="fld"><span>Responsable</span>${peopleSelect('responsable', s.responsable)}</label>
+    <label class="fld"><span>Notes</span><textarea class="inp" name="notes">${h(s.notes || '')}</textarea></label>
+  </form>`, foot: footer('societe', s.id, isNew), mount: m => mountPeople($('#dform', m)) };
+}
+function fContact(c, pre = {}) {
+  const isNew = !c; c = c || { societeId: pre.societe || '', langue: 'Français' };
+  return { title: isNew ? 'Nouveau contact' : 'Contact', body: `<form id="dform" data-form="contact" data-id="${h(c.id || '')}">
+    <label class="fld"><span>Société</span>${socCombo(c.societeId)}</label>
+    <div class="fgrid"><label class="fld"><span>Prénom</span><input class="inp" name="prenom" value="${h(c.prenom || '')}"></label><label class="fld"><span>Nom *</span><input class="inp" name="nom" required value="${h(c.nom || '')}"></label></div>
+    <div class="fgrid"><label class="fld"><span>Fonction</span><input class="inp" name="fonction" value="${h(c.fonction || '')}"></label><label class="fld"><span>Rôle dans l'achat</span><select class="inp" name="role"><option value="">—</option>${ROLES.map(x => `<option ${c.role === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label></div>
+    <div class="fgrid"><label class="fld"><span>Mail</span><input class="inp" type="email" name="email" value="${h(c.email || '')}"></label><label class="fld"><span>Portable</span><input class="inp" type="tel" name="portable" value="${h(c.portable || '')}"></label><label class="fld"><span>Téléphone fixe</span><input class="inp" type="tel" name="tel" value="${h(c.tel || '')}"></label></div>
+    <label class="fld"><span>Langue</span><select class="inp" name="langue">${LANGUES.map(x => `<option ${c.langue === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+    <label class="row"><input type="checkbox" name="consentement" ${c.consentement ? 'checked' : ''}><span>Accepte de recevoir des mails commerciaux${c.consentementLe ? ` <span class="muted small">(depuis le ${h(fmtD(c.consentementLe))})</span>` : ''}</span></label>
+    <label class="fld"><span>Notes</span><textarea class="inp" name="notes">${h(c.notes || '')}</textarea></label>
+    ${!isNew ? `<div class="row"><button type="button" class="btn sm" data-act="new-action" data-societe="${h(c.societeId || '')}" data-contact="${h(c.id)}" ${ro()}>+ Noter un échange avec ce contact</button></div>` : ''}
+  </form>`, foot: footer('contact', c.id, isNew), mount: m => mountSocCombo($('#dform', m), () => {}) };
+}
+function lineRow(l = {}) { return `<div class="line"><select class="inp" name="l_produit">${prodOptions(l.produit)}</select><input class="inp" name="l_tonnes" inputmode="decimal" placeholder="tonnes" value="${h(l.tonnes ?? '')}"><input class="inp" name="l_prix" inputmode="decimal" placeholder="€ / tonne" value="${h(l.prix ?? '')}"><button type="button" class="btn sm ghost" data-rmline aria-label="Retirer">✕</button></div>`; }
+function fProjet(p, pre = {}) {
+  const isNew = !p; p = p || { nature: pre.nature || 'affaire', etape: 'contact', statut: 'en_cours', societeId: pre.societe || '', responsable: S.me, lignes: [], jalons: [] };
+  const aff = p.nature === 'affaire';
+  return { title: isNew ? 'Nouveau projet' : 'Modifier le projet', body: `<form id="dform" data-form="projet" data-id="${h(p.id || '')}">
+    <div class="fld"><span>Nature</span><div class="seg" id="f-nature">${Object.entries(NATURES).map(([k, l]) => `<button type="button" data-n="${k}" class="${p.nature === k ? 'on' : ''}">${l}</button>`).join('')}</div><input type="hidden" name="nature" value="${p.nature}"></div>
+    <label class="fld"><span>Intitulé *</span><input class="inp" name="titre" required value="${h(p.titre || '')}" placeholder="${aff ? 'Par exemple : litière Eucalyptus, contrat 2027' : 'Par exemple : salon Equita Lyon'}"></label>
+    <label class="fld"><span>Société${p.nature === 'interne' ? ' <em>(facultatif)</em>' : ''}</span>${socCombo(p.societeId)}</label>
+    <div class="fgrid"><label class="fld"><span>Contact principal</span><select class="inp" name="contactId" id="f-contact">${contactOptions(p.societeId, p.contactId)}</select></label>
+    <label class="fld"><span>Responsable</span>${peopleSelect('responsable', p.responsable)}</label></div>
+    <div data-aff ${aff ? '' : 'hidden'} style="display:grid;gap:14px">
+      <div class="fgrid"><label class="fld"><span>Étape</span><select class="inp" name="etape" id="f-etape">${ETAPES.map(e => `<option value="${e.k}" ${p.etape === e.k ? 'selected' : ''}>${e.l}</option>`).join('')}</select></label>
+      <label class="fld"><span>Probabilité <em>(%)</em></span><input class="inp" name="proba" id="f-proba" inputmode="numeric" value="${h(p.proba ?? ETAPE[p.etape || 'contact'].p)}"></label>
+      <label class="fld"><span>Décision prévue</span><input class="inp" type="date" name="dateDecision" value="${h(p.dateDecision || '')}"></label></div>
+      <label class="fld" id="f-motif-w" ${p.etape === 'perdue' ? '' : 'hidden'}><span>Motif de perte</span><select class="inp" name="motifPerte"><option value="">—</option>${MOTIFS.map(m => `<option ${p.motifPerte === m ? 'selected' : ''}>${m}</option>`).join('')}</select></label>
+      <fieldset class="fset"><legend>Produits</legend><div class="lines" id="f-lines">${(p.lignes || []).map(lineRow).join('') || lineRow()}</div>
+        <button type="button" class="btn sm" id="f-addline" style="justify-self:start">+ Ajouter un produit</button>
+        <div class="fgrid"><label class="fld"><span>Tonnage total <em>(tonnes)</em></span><input class="inp" name="tonnes" id="f-tonnes" inputmode="decimal" value="${h(p.tonnes ?? '')}"></label>
+        <label class="fld"><span>Montant estimé <em>(euros)</em></span><input class="inp" name="montant" id="f-montant" inputmode="decimal" value="${h(p.montant ?? '')}"></label></div>
+        <span class="src">Tonnage et montant se calculent à partir des lignes ; vous pouvez les corriger.</span></fieldset>
+      <label class="fld"><span>Source</span><select class="inp" name="source"><option value="">—</option>${SOURCES.map(x => `<option ${p.source === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+    </div>
+    <div data-proj ${aff ? 'hidden' : ''} style="display:grid;gap:14px">
+      <div class="fgrid"><label class="fld"><span>Statut</span><select class="inp" name="statut">${STATUTS_P.map(s => `<option value="${s.k}" ${p.statut === s.k ? 'selected' : ''}>${s.l}</option>`).join('')}</select></label>
+      <label class="fld"><span>Début</span><input class="inp" type="date" name="debut" value="${h(p.debut || '')}"></label>
+      <label class="fld"><span>Échéance</span><input class="inp" type="date" name="echeance" value="${h(p.echeance || '')}"></label></div>
+    </div>
+    <label class="fld"><span>Description</span><textarea class="inp" name="description">${h(p.description || '')}</textarea></label>
+  </form>`, foot: footer('projet', p.id, isNew), mount: m => mountProjet(m, p) };
+}
+function mountProjet(m, p) {
+  const f = $('#dform', m), lines = $('#f-lines', f);
+  $('#f-nature', f).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $$('#f-nature button', f).forEach(x => x.classList.toggle('on', x === b)); f.nature.value = b.dataset.n; $('[data-aff]', f).hidden = b.dataset.n !== 'affaire'; $('[data-proj]', f).hidden = b.dataset.n === 'affaire'; });
+  const et = $('#f-etape', f); let lastAuto = String(ETAPE[p.etape || 'contact'].p);
+  et.addEventListener('change', () => { const pr = $('#f-proba', f); if (pr.value === lastAuto || pr.value === '') { pr.value = ETAPE[et.value].p; lastAuto = pr.value; } $('#f-motif-w', f).hidden = et.value !== 'perdue'; });
+  const recalc = () => { let t = 0, mt = 0, any = false; for (const r of $$('.line', lines)) { const tn = num($('[name=l_tonnes]', r).value), px = num($('[name=l_prix]', r).value); if (tn != null) { t += tn; any = true; if (px != null) mt += tn * px; } } if (any) { $('#f-tonnes', f).value = Math.round(t * 10) / 10; if (mt) $('#f-montant', f).value = Math.round(mt); } };
+  lines.addEventListener('input', recalc);
+  lines.addEventListener('click', e => { if (e.target.closest('[data-rmline]')) { e.target.closest('.line').remove(); if (!$('.line', lines)) lines.insertAdjacentHTML('beforeend', lineRow()); recalc(); } });
+  $('#f-addline', f).addEventListener('click', () => lines.insertAdjacentHTML('beforeend', lineRow()));
+  mountSocCombo(f, sid => { $('#f-contact', f).innerHTML = contactOptions(sid, ''); });
+  mountPeople(f);
+}
+
+/* ---------- Tiroir ---------- */
+let drawerFor = null;
+function openDrawer(d) {
+  drawerFor = document.activeElement;
+  $('#drawer').innerHTML = `<div class="dh2"><h2 id="dtitle">${d.title}</h2><button class="btn ghost" data-act="close-drawer" aria-label="Fermer">✕</button></div><div class="dbody">${d.body}</div><div class="dfoot">${d.foot}</div>`;
+  $('#dwrap').hidden = false; d.mount && d.mount($('#drawer'));
+  setTimeout(() => { const first = $('#drawer .dbody input:not([type=hidden]):not([type=checkbox]), #drawer .dbody select'); first && first.focus(); }, 30);
+}
+function closeDrawer() { $('#dwrap').hidden = true; $('#drawer').innerHTML = ''; drawerFor && drawerFor.focus && drawerFor.focus(); }
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#dwrap').hidden) closeDrawer(); });
+
+async function submitForm(f) {
+  const kind = f.dataset.form, id = f.dataset.id, isNew = !id, fd = new FormData(f), g = k => (fd.get(k) ?? '').toString().trim();
+  if (kind === 'action') {
+    const nid = id || newId(), prev = S.actions.get(nid) || {}, T = TYPE[g('type')];
+    const champs = {}; for (const [k, v] of fd) if (k.startsWith('c_') && String(v).trim()) champs[k.slice(2)] = String(v).trim();
+    let assigne = g('assigne'); if (assigne === '__search') assigne = S.me;
+    const d = { ...prev, type: g('type'), statut: g('statut'), titre: g('titre'), date: g('date'), heure: g('heure'), duree: num(g('duree')), societeId: g('societeId'), contactId: g('contactId'), projetId: g('projetId'), assigne: assigne || S.me || null, compteRendu: g('compteRendu'), champs };
+    if (d.statut === 'fait' && prev.statut !== 'fait') d.faitLe = today();
+    if (!(await save('actions', nid, d, isNew))) return;
+    if (d.statut === 'fait' && fd.get('suivi_on')) {
+      await save('actions', newId(), { type: g('suivi_type'), statut: 'a_faire', titre: g('suivi_titre'), date: g('suivi_date'), societeId: d.societeId, contactId: d.contactId, projetId: d.projetId, assigne: d.assigne, champs: {} }, true);
+      toast(`Enregistré. Suite prévue le ${fmtD(g('suivi_date'))}.`);
+    } else toast(`${T?.l || 'Action'} enregistrée.`);
+    closeDrawer();
+  } else if (kind === 'societe') {
+    const nid = id || newId(), prev = S.societes.get(nid) || {};
+    const d = { ...prev, nom: g('nom'), statut: g('statut'), codeTiers: g('codeTiers'), segments: fd.getAll('segments'), univers: g('univers'), tel: g('tel'), email: g('email'), adresse: g('adresse'), cp: g('cp'), ville: g('ville'), pays: g('pays'), site: g('site'), source: g('source'), responsable: g('responsable') === '__search' ? (prev.responsable || S.me) : g('responsable'), notes: g('notes') };
+    if (!(await save('societes', nid, d, isNew))) return;
+    closeDrawer(); toast('Société enregistrée.'); if (isNew) go('fiche-' + nid);
+  } else if (kind === 'contact') {
+    const nid = id || newId(), prev = S.contacts.get(nid) || {};
+    const cons = !!fd.get('consentement');
+    const d = { ...prev, societeId: g('societeId'), prenom: g('prenom'), nom: g('nom'), fonction: g('fonction'), role: g('role'), email: g('email'), portable: g('portable'), tel: g('tel'), langue: g('langue'), consentement: cons, consentementLe: cons ? (prev.consentementLe || today()) : '', notes: g('notes') };
+    if (!(await save('contacts', nid, d, isNew))) return;
+    closeDrawer(); toast('Contact enregistré.');
+  } else if (kind === 'projet') {
+    const nid = id || newId(), prev = S.projets.get(nid) || {};
+    const lignes = []; const P = fd.getAll('l_produit'), Tn = fd.getAll('l_tonnes'), Px = fd.getAll('l_prix');
+    P.forEach((pr, i) => { const t = num(Tn[i]), x = num(Px[i]); if (pr || t != null || x != null) lignes.push({ produit: pr, tonnes: t, prix: x }); });
+    const nature = g('nature');
+    const d = { ...prev, nature, titre: g('titre'), societeId: g('societeId'), contactId: g('contactId'), responsable: g('responsable') === '__search' ? (prev.responsable || S.me) : g('responsable'), description: g('description') };
+    if (nature === 'affaire') {
+      Object.assign(d, { etape: g('etape'), proba: num(g('proba')) ?? ETAPE[g('etape')].p, dateDecision: g('dateDecision'), motifPerte: g('etape') === 'perdue' ? g('motifPerte') : '', lignes, tonnes: num(g('tonnes')), montant: num(g('montant')), source: g('source') });
+      if (['gagnee', 'perdue'].includes(d.etape) && prev.etape !== d.etape) d.dateCloture = today();
+    } else Object.assign(d, { statut: g('statut'), debut: g('debut'), echeance: g('echeance'), jalons: prev.jalons || [] });
+    if (nature === 'client' && !d.societeId) { toast('Un projet client doit être rattaché à une société.'); return; }
+    if (!(await save('projets', nid, d, isNew))) return;
+    closeDrawer(); toast(d.etape === 'gagnee' && prev.etape !== 'gagnee' ? 'Affaire gagnée. Pensez à saisir la commande dans Divalto.' : 'Projet enregistré.'); if (isNew) go('projet-' + nid);
+  } else if (kind === 'jalon') {
+    const p = S.projets.get(id); if (!p) return;
+    const j = [...(p.jalons || []), { titre: g('titre'), date: g('date'), fait: false }];
+    if (await save('projets', id, { ...p, jalons: j }, false)) f.reset();
+  }
+}
+
+/* ---------- Événements ---------- */
+let armed = null;
+document.addEventListener('click', async e => {
+  if (!e.target.closest('.search')) $('#gres').hidden = true;
+  const link = e.target.closest('a[href]');
+  const el = e.target.closest('[data-act]');
+  // Un lien placé dans une ligne cliquable l'emporte sur l'action de la ligne.
+  if (link && (!el || el.contains(link))) { if (!$('#dwrap').hidden && $('#drawer').contains(link)) closeDrawer(); return; }
+  if (!el) return;
+  const d = el.dataset, act = d.act;
+  if (act !== 'del' && armed) { armed.classList.remove('armed'); armed.textContent = 'Supprimer'; armed = null; }
+  switch (act) {
+    case 'go': go(d.to); break;
+    case 'menu': $('#side').classList.contains('open') ? closeSide() : openSide(); break;
+    case 'close-side': closeSide(); break;
+    case 'close-drawer': closeDrawer(); break;
+    case 'setf': S.f[d.k] = d.v; saveF(); render(); break;
+    case 'more': S.showMore += 150; render(); break;
+    case 'week': S.f.week = +d.d === 0 ? weekStart(today()) : addDays(S.f.week, +d.d); render(); break;
+    case 'new-action': if (!S.canWrite) return; closeSide(); if (!$('#dwrap').hidden) closeDrawer(); openDrawer(fAction(null, { type: d.type, societe: d.societe, projet: d.projet, titre: d.titre, date: d.date })); if (d.contact) setTimeout(() => { const c = $('#f-contact'); if (c) c.value = d.contact; }, 0); break;
+    case 'edit-action': { const a = S.actions.get(d.id); if (a) openDrawer(fAction({ id: d.id, ...a })); break; }
+    case 'new-societe': if (S.canWrite) openDrawer(fSociete(null)); break;
+    case 'edit-societe': { const s = S.societes.get(d.id); if (s) openDrawer(fSociete({ id: d.id, ...s })); break; }
+    case 'new-contact': if (S.canWrite) openDrawer(fContact(null, { societe: d.societe })); break;
+    case 'edit-contact': { const c = S.contacts.get(d.id); if (c) openDrawer(fContact({ id: d.id, ...c })); break; }
+    case 'new-projet': if (S.canWrite) openDrawer(fProjet(null, { nature: d.nature, societe: d.societe })); break;
+    case 'edit-projet': { const p = S.projets.get(d.id); if (p) openDrawer(fProjet({ id: d.id, ...p })); break; }
+    case 'toggle-done': {
+      const a = S.actions.get(d.id); if (!a || !S.canWrite) return;
+      const done = a.statut !== 'fait';
+      const upd = { ...a, statut: done ? 'fait' : 'a_faire', ...(done ? { faitLe: today(), prevuLe: a.date || '', date: today() } : { date: a.prevuLe || a.date }) };
+      if (await save('actions', d.id, upd, false)) {
+        if (done) toast('Action faite.', { label: 'Ajouter un compte rendu', fn: () => openDrawer(fAction({ id: d.id, ...upd })) }); else toast('Action remise à faire.');
+      }
+      break;
+    }
+    case 'set-etape': {
+      const p = S.projets.get(d.id); if (!p || p.etape === d.v) return;
+      const upd = { ...p, etape: d.v, proba: ETAPE[d.v].p, ...(['gagnee', 'perdue'].includes(d.v) ? { dateCloture: today() } : {}) };
+      if (await save('projets', d.id, upd, false)) { if (d.v === 'perdue') openDrawer(fProjet({ id: d.id, ...upd })); toast(d.v === 'gagnee' ? 'Affaire gagnée. Pensez à saisir la commande dans Divalto.' : `Étape : ${ETAPE[d.v].l}.`); }
+      break;
+    }
+    case 'set-statut': { const p = S.projets.get(d.id); if (p && p.statut !== d.v) await save('projets', d.id, { ...p, statut: d.v }, false); break; }
+    case 'jalon': { const p = S.projets.get(d.id); if (!p) return; const j = (p.jalons || []).map((x, i) => i === +d.i ? { ...x, fait: !x.fait } : x); await save('projets', d.id, { ...p, jalons: j }, false); break; }
+    case 'copy': { const v = d.v; try { await navigator.clipboard.writeText(v); toast('Copié.'); } catch (x) { toast(v); } break; }
+    case 'del': {
+      if (armed !== el) { armed = el; el.classList.add('armed'); el.textContent = 'Confirmer la suppression'; return; }
+      const coll = { action: 'actions', societe: 'societes', contact: 'contacts', projet: 'projets' }[d.kind];
+      if (d.kind === 'societe') for (const c of ix().ctBySoc.get(d.id) || []) await remove('contacts', c.id);
+      if (await remove(coll, d.id)) { closeDrawer(); toast('Supprimé.'); if (d.kind === 'societe' && S.route === 'fiche') go('societes'); if (d.kind === 'projet' && S.route === 'projet') go('projets'); }
+      armed = null; break;
+    }
+    case 'imp-reset': S.imp = null; render(); break;
+    case 'imp-run': runImport(); break;
+  }
+});
+document.addEventListener('submit', e => { const f = e.target.closest('form[data-form]'); if (!f) return; e.preventDefault(); submitForm(f); });
+document.addEventListener('input', e => { const k = e.target.dataset?.f; if (k && e.target.tagName === 'INPUT') { S.f[k] = e.target.value; S.showMore = 0; scheduleRender(); } });
+document.addEventListener('change', e => {
+  const t = e.target, k = t.dataset?.f;
+  if (k && t.tagName === 'SELECT') { S.f[k] = k === 'dormant' ? +t.value : t.value; saveF(); render(); return; }
+  if (t.id === 'impfile' && t.files[0]) readImport(t.files[0]);
+  if (t.id === 'imp-sheet') setSheet(t.value);
+  if (t.dataset?.imp) { S.imp.map[t.dataset.imp] = t.value === '' ? undefined : +t.value; render(); }
+  if (t.id === 'imp-statut') S.imp.statut = t.value;
+  if (t.id === 'imp-seg') S.imp.seg = t.value;
+});
+function afterRender() {
+  const drop = $('#drop');
+  if (drop) {
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) readImport(f); });
+  }
+  const kb = $('#kanban');
+  if (kb && S.canWrite) {
+    kb.addEventListener('dragstart', e => { const c = e.target.closest('[data-drag]'); if (!c) return; e.dataTransfer.setData('text/plain', c.dataset.drag); c.classList.add('dragging'); });
+    kb.addEventListener('dragend', e => e.target.closest('[data-drag]')?.classList.remove('dragging'));
+    kb.addEventListener('dragover', e => { const col = e.target.closest('[data-drop]'); if (!col) return; e.preventDefault(); $$('.kcol.over', kb).forEach(x => x !== col && x.classList.remove('over')); col.classList.add('over'); });
+    kb.addEventListener('dragleave', e => { const col = e.target.closest('[data-drop]'); if (col && !col.contains(e.relatedTarget)) col.classList.remove('over'); });
+    kb.addEventListener('drop', async e => {
+      const col = e.target.closest('[data-drop]'); if (!col) return; e.preventDefault(); col.classList.remove('over');
+      const id = e.dataTransfer.getData('text/plain'), p = S.projets.get(id), v = col.dataset.drop; if (!p || p.etape === v) return;
+      const upd = { ...p, etape: v, proba: ETAPE[v].p, ...(['gagnee', 'perdue'].includes(v) ? { dateCloture: today() } : {}) };
+      if (await save('projets', id, upd, false)) { if (v === 'perdue') openDrawer(fProjet({ id, ...upd })); toast(v === 'gagnee' ? 'Affaire gagnée. Pensez à saisir la commande dans Divalto.' : `${p.titre} : ${ETAPE[v].l}.`); }
+    });
+  }
+}
+
+/* ---------- Recherche globale ---------- */
+const gs = $('#gsearch'), gr = $('#gres');
+gs.addEventListener('input', () => {
+  const q = norm(gs.value); if (q.length < 2) { gr.hidden = true; return; }
+  const digits = gs.value.replace(/\D/g, '');
+  const res = [];
+  for (const s of all('societes')) if (norm([s.nom, s.codeTiers, s.ville, s.email].join(' ')).includes(q) || (digits.length > 4 && String(s.tel || '').replace(/\D/g, '').includes(digits))) res.push(['fiche-' + s.id, s.nom, 'Société' + (s.ville ? ' · ' + s.ville : '')]);
+  for (const c of all('contacts')) if (norm([c.prenom, c.nom, c.email].join(' ')).includes(q) || (digits.length > 4 && String((c.tel || '') + (c.portable || '')).replace(/\D/g, '').includes(digits))) res.push([c.societeId ? 'fiche-' + c.societeId : 'contacts', ctName(c), 'Contact · ' + socName(c.societeId)]);
+  for (const p of all('projets')) if (norm(p.titre).includes(q)) res.push(['projet-' + p.id, p.titre, NATURES[p.nature] + (p.societeId ? ' · ' + socName(p.societeId) : '')]);
+  gr.innerHTML = res.length ? res.slice(0, 10).map(([to, a, b]) => `<a href="#${h(to)}"><b>${h(a)}</b><span class="small muted">${h(b)}</span></a>`).join('') : '<div class="pb muted">Aucun résultat</div>';
+  gr.hidden = false;
+});
+gs.addEventListener('keydown', e => { if (e.key === 'Enter') { const a = $('a', gr); if (a) { location.hash = a.getAttribute('href'); gr.hidden = true; gs.value = ''; gs.blur(); } } if (e.key === 'Escape') { gr.hidden = true; gs.blur(); } });
+gr.addEventListener('click', e => { if (e.target.closest('a')) { gr.hidden = true; gs.value = ''; } });
+
+/* ---------- Toast ---------- */
+let toastT = null;
+function toast(msg, action) {
+  const t = $('#toast'); t.innerHTML = ''; const s = document.createElement('span'); s.textContent = msg; t.appendChild(s);
+  if (action) { const b = document.createElement('button'); b.textContent = action.label; b.onclick = () => { t.hidden = true; action.fn(); }; t.appendChild(b); }
+  t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, action ? 6000 : 3200);
+}
+
+const mq = matchMedia('(max-width: 860px)');
+const syncMenuBtn = () => { $('#menu-btn').style.display = mq.matches ? '' : 'none'; };
+mq.addEventListener ? mq.addEventListener('change', syncMenuBtn) : mq.addListener(syncMenuBtn); syncMenuBtn();
+boot();
+</script>
